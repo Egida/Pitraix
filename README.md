@@ -1,6 +1,6 @@
-**i am not responsible for any damage you do using this!**
+**I am not responsible for any damage you do using this!**
 
-<img src="https://i.ibb.co/nM06FQM/pitraix.png"></img>
+<img src="https://i.ibb.co/nM06FQM/pitraix.png" width=400 height=400></img>
 # Pitraix
 Modern Cross-Platform HTTP-Based P2P Botnet over TOR that cannot be traced
 Design is based off intelligence agencies structures for reasoning behind this design check `spec.txt`
