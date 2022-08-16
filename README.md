@@ -13,7 +13,7 @@ it is done automatically and does not need operator intervention.
 # Cross-platform with some sneaky 1-days
 Pitraix works on windows 7 all way to windows 11 as well as linux
 
-it has ability to automatically privilege escalate on linux and windows
+it has ability to automatically privilege escalate on both, linux and windows.
 
 on linux it does so by keylogging password when user runs "sudo" or "doas"
 
