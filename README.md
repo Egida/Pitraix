@@ -63,6 +63,15 @@ Picture of working OPER
 # Help
 - Type "help" in OPER for list of commands
 
+# Support
+This project is developed entirely by me in my free time, if you'd like to support me to keep updating, best way is via donating.
+
+Monero: `8AvS51UKvQ38howM6WPxLQ5yFyDgWd1ggUTwVBGRH7GYHiG9g4BemSe4u9pQdWQP6MPRXNGWQoJVqQPGWU3Cot8c5YgMFkY`
+
+Bitcoin (segwit): `bc1qy7amu3yarnctutyc2gm0zuqwrqcpjh676v0sld`
+
+Bitcoin (legacy): `1KcfixRTP4P2rFT1r9yHdQ9cCLNJqWCnPd`
+
 # Future
 - This is a oldi-sh version of Pitraix, more advanced options will be added soon as I work on ironing out bugs
 - For example python and powershell Modules support will be added soon alongside alot of bug fixes 
