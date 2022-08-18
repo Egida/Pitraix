@@ -4,23 +4,23 @@
 # Pitraix
 Modern Cross-Platform HTTP-Based P2P Botnet over TOR that cannot be traced.
 
-Design is based off intelligence agencies structures, for reasoning behind this design check `spec.txt`
+Design is made so even malicious peers cannot do any damage while protecting operator identity, for reasoning behind this design check `spec.txt`
 
 # Built-in Crypter and self-spreading
-Pitraix has ability to self modify it's own code which results in a completely different executable in terms of hash on every Host infection.
+Pitraix has ability to self modify own code which results in a completely different executable in terms of hash on every new infection
 
-it is done automatically and does not need operator intervention.
+All is done automagically and does not need operator intervention.
+
 
 # Cross-platform with some sneaky 1-days
-Pitraix works on windows 7 all way to windows 11 as well as linux
+Pitraix works on Windows 7 - 11 as well as linux
 
-it has ability to automatically privilege escalate on both, linux and windows.
+it has ability to automagically privilege escalate in both platforms
 
-on linux it does so by keylogging password when user runs "sudo" or "doas"
+Linux it does so by keylogging password when user runs "sudo" or "doas"
 
-on windows it uses a modified version of UACME (work in progress)
+Windows it uses a modified version of UACME (work in progress)
 
-- This release will only include windows version, next release will be linux as I iron out bugs from linux port
 
 # Dynamic Behaviour
 Pitraix automatically chooses different persistence locations on every host
@@ -40,6 +40,8 @@ Names of config files, pitraix it's self and more are all dynmically generated t
 - Peer-to-Peer over TOR
 
 - Advanced Anti-VM detection
+
+- Does not read or write any registry keys, thus lower detection
 
 - Ability to keylog cross-platform even when run as user and not root
 
@@ -81,8 +83,8 @@ Picture of working OPER
 
 # Future
 - This is a oldi-sh version of Pitraix, more advanced options will be added soon as I work on ironing out bugs
-- For example python and powershell Modules support will be added soon alongside alot of bug fixes 
-
+- Next release will be more bug-fixes, new instructions and modules support 
+ 
 # Techincal
 - Please read `spec.txt` for more techincal information
 
