@@ -4,7 +4,7 @@
 # Pitraix
 Modern Cross-Platform HTTP-Based P2P Botnet over TOR that cannot be traced.
 
-Design is made so even malicious peers cannot do any damage while protecting operator identity, for reasoning behind this design check `spec.txt`
+Design is based off "zero-trust" even malicious peers cannot do any damage while protecting operator identity, for reasoning behind this design check `spec.txt`
 
 # Built-in Crypter and self-spreading
 Pitraix has ability to self modify own code which results in a completely different executable in terms of hash on every new infection
