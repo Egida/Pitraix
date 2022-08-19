@@ -2,29 +2,28 @@
 
 <img src="https://i.ibb.co/nM06FQM/pitraix.png" width=400 height=400></img>
 # Pitraix
-Modern Cross-Platform HTTP-Based P2P Botnet over TOR that cannot be traced.
+- Modern Cross-Platform HTTP-Based P2P Botnet over TOR that cannot be traced.
 
-Design is based off "zero-trust" even malicious peers cannot do any damage while protecting operator identity, for reasoning behind this design check `spec.txt`
+- Design is based off "zero-trust" even malicious peers cannot do any damage while protecting operator identity, for reasoning behind this design check `spec.txt`
 
 # Built-in Crypter and self-spreading
-Pitraix has ability to self modify own code which results in a completely different executable in terms of hash on every new infection
+- Pitraix has ability to self modify own code which results in a completely different executable in terms of hash on every new infection
 
-All is done automagically and does not need operator intervention.
+- All is done automagically and does not need operator intervention.
 
 
 # Cross-platform with some sneaky 1-days
-Pitraix works on Windows 7 all way to Windows 11 as well as linux
+- Pitraix works on Windows 7 all way to Windows 11 as well as linux
 
-it has ability to automagically privilege escalate in both platforms
+- it has ability to automagically privilege escalate in both platforms
 
-Linux it does so by keylogging password when user runs "sudo" or "doas"
+- on Linux it does so by keylogging password when user runs "sudo" or "doas"
 
-Windows it uses a modified version of UACME (work in progress)
+- on Windows it uses a modified version of UACME (work in progress)
 
 
 # Dynamic Behaviour
-Pitraix automatically chooses different persistence locations on every host
-Names of config files, pitraix it's self and more are all dynmically generated to confuse anti-viruses
+- Pitraix automatically chooses different persistence locations on every host as well as names of config file, even pitraix name it's self and more are all dynmically generated to confuse anti-viruses
 
 
 # Anonymous and secure
