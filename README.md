@@ -85,15 +85,17 @@ Picture of working OPER
 - This is a oldi-sh version of Pitraix, more advanced options will be added soon as I work on ironing out bugs
 - Next release will be more bug-fixes, new instructions and modules support 
  
-# Techincal
-- Please read `spec.txt` for more techincal information
-
-# Set up
+# Setting it up
 - Download latest Go version for your platform
 - Download files from releases and make sure they are all in same folder
 - Compile lyst for platform you want
 - Compile OPER (do NOT `go run OPER.go`! instead compile it THEN run the executable
 - After running OPER for first time, it should automagically generate and embed RSA keys and TOR addresses into lyst executable
+
+
+# Techincal
+- Please read `spec.txt` for more techincal information
+
 
 # Terms
 - Operative/OPER means the botmaster
