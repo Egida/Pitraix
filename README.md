@@ -8,7 +8,7 @@
 
 - Pitraix is able to handle millions of hosts, the limit is TOR network capacity
 
-- You can run Pitraix on a toaster and it will still work just as good with said millions of hosts, as the operative is one who sending requests, not recieving it, There is no C2 :)
+- You can run Pitraix on a toaster and it will still work just as good with said millions of hosts, as the operative is one who sending requests, not recieving it and because there is no C2.
 
 
 # Built-in Crypter and self-spreading
