@@ -6,6 +6,11 @@
 
 - Design is based off "zero-trust" even malicious peers cannot do any damage while protecting operator identity, for reasoning behind this design check `spec.txt`
 
+- Pitraix is able to handle millions of hosts, the limit is TOR network capacity
+
+- You can run Pitraix on a toaster and it will still work just as good with said millions of hosts, as the operative is one who sending requests, not recieving it.
+
+
 # Built-in Crypter and self-spreading
 - Pitraix has ability to self modify own code which results in a completely different executable in terms of hash on every new infection
 
@@ -91,10 +96,11 @@ Picture of working OPER
 
 
 # Techincal
+- If it's little bit slow it's due TOR network, TOR network is expected to be upgraded soon and thus speed should be greatly improved then
 - Please read `spec.txt` for more techincal information
 
 # Future
-- This is a oldi-sh version of Pitraix, more advanced options will be added soon as I work on ironing out bugs
+- This is a old-ish version of Pitraix, more advanced options will be added soon as I work on ironing out bugs
 - Next release will be more bug-fixes, new instructions and modules support 
 
 
