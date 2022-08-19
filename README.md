@@ -13,7 +13,7 @@ All is done automagically and does not need operator intervention.
 
 
 # Cross-platform with some sneaky 1-days
-Pitraix works on Windows 7 - 11 as well as linux
+Pitraix works on Windows 7 all way to Windows 11 as well as linux
 
 it has ability to automagically privilege escalate in both platforms
 
