@@ -59,6 +59,7 @@
 - Logs are mainly used for debugging behaviour and errors
 
 Picture of working OPER
+
 <img src="https://i.ibb.co/RCBW7NG/image.png"></img>
 
 
