@@ -103,10 +103,10 @@ Hostring/cell means botnet
 
 
 # Set up
-- Put your RSA key PEM encoded in OPER.go
+- Download latest Go version for your platform
+- Download files from releases and make sure they are all in same folder
+- Compile lyst for platform you want
+- Compile OPER (do NOT `go run OPER.go`! instead compile it THEN run the executable
+- After running OPER for first time, it should automagically generate and embed RSA keys and TOR addresses into lyst executable
 
-- Set up a hidden TOR service on port 1337 and place your tor address in lyst.go
-
-- You don't to have TOR service on all time, as this is peer to peer. also your tor address embdedded inside will change to other hosts addresses automatically by crypter
-
-have fun
+Have fun
