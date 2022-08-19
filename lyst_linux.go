@@ -71,7 +71,7 @@ var (
 	pitraix_FilePath = "Pitraix"
 	tor_FolderPath = "Pitraix"
 
-	username 	 = strings.TrimSpace(doInstru("shell", "whoami"))
+	username 	 = os.Getenv("USER")
 	userHomeDIR  = os.Getenv("HOME")
 	shell		 = os.Getenv("SHELL")
 	userHostname = os.Getenv("HOSTNAME")
