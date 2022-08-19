@@ -1,3 +1,5 @@
+##### This is meant as a refresher for me and not nesseacrily a documentation or guide to noobs, some features mentioned here are not implemented yet or implemented differently ###
+
 [Operatives - OPERS - OPS]
 - OPS are "bot masters"
 - Anyone who is a OPER means he has access to high-instructing PGP key
@@ -89,3 +91,5 @@ After specific peroid of no new instructions, HSTS would keep checking sites lik
     
 
 - GPU Perissting will be last thing to add
+
+- after gpu perisistng vbios modding is deemed reliable add support for setting computer on fire
