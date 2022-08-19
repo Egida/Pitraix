@@ -23,7 +23,7 @@
 
 
 # Dynamic Behaviour
-- Pitraix automatically chooses different persistence locations on every host as well as names of config file, even pitraix name it's self and more are all dynmically generated to confuse anti-viruses
+- Pitraix automagically chooses different persistence locations on every host as well as names of config file, pitraix name it's self and more are all dynamically generated to confuse anti-viruses
 
 
 # Anonymous and secure
