@@ -62,8 +62,11 @@ Picture of working OPER
 <img src="https://i.ibb.co/RCBW7NG/image.png"></img>
 
 
-# Help
-- Type "help" in OPER for list of commands
+# Trust
+- For my GPG key please check `gpg.txt`
+
+- Anyone who claims to be me and don't haven't signed a message with that key is NOT me
+
 
 # Support
 - This project is developed entirely by me in my free time, if you'd like to support me to keep updating, best way is via donating.
@@ -74,16 +77,6 @@ Picture of working OPER
 
 - Bitcoin (legacy): `1KcfixRTP4P2rFT1r9yHdQ9cCLNJqWCnPd`
 
-
-# Trust
-- For my GPG key please check `gpg.txt`
-
-- Anyone who claims to be me and don't haven't signed a message with that key is NOT me
-
-# Future
-- This is a oldi-sh version of Pitraix, more advanced options will be added soon as I work on ironing out bugs
-- Next release will be more bug-fixes, new instructions and modules support 
- 
 # Setting it up
 - Download latest Go version for your platform
 - Download files from releases and make sure they are all in same folder
@@ -92,8 +85,16 @@ Picture of working OPER
 - After running OPER for first time, it should automagically generate and embed RSA keys and TOR addresses into lyst executable
 
 
+# Help
+- Type "help" in OPER for list of commands
+
+
 # Techincal
 - Please read `spec.txt` for more techincal information
+
+# Future
+- This is a oldi-sh version of Pitraix, more advanced options will be added soon as I work on ironing out bugs
+- Next release will be more bug-fixes, new instructions and modules support 
 
 
 # Terms
