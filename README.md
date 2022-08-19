@@ -88,25 +88,25 @@ Picture of working OPER
 # Techincal
 - Please read `spec.txt` for more techincal information
 
-# Terms
-Operative/OPER means the botmaster
-
-Agent/AGS means a host that can relay instructions
-
-Host/HST means a host that does not relay instructions
-
-Instructions mean commands
-
-Host means a bot
-
-Hostring/cell means botnet
-
-
 # Set up
 - Download latest Go version for your platform
 - Download files from releases and make sure they are all in same folder
 - Compile lyst for platform you want
 - Compile OPER (do NOT `go run OPER.go`! instead compile it THEN run the executable
 - After running OPER for first time, it should automagically generate and embed RSA keys and TOR addresses into lyst executable
+
+# Terms
+- Operative/OPER means the botmaster
+
+- Agent/AGS means a host that can relay instructions
+
+- Host/HST means a host that does not relay instructions
+
+- Instructions mean commands
+
+- Host means a bot
+
+- Hostring/cell means botnet
+
 
 Have fun
