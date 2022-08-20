@@ -1,3 +1,5 @@
+**[English][en]** - [Hebrew][he] - [Arabic][ar] - [Russian][ru]
+
 **I am not responsible for any damage you do using this!**
 
 <img src="https://i.ibb.co/nM06FQM/pitraix.png" width=400 height=400></img>
