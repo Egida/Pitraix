@@ -4,7 +4,7 @@
 # Pitraix
 - Modern Cross-Platform HTTP-Based P2P Botnet over TOR that cannot be traced.
 
-- Design is based off "zero-trust" even malicious peers cannot do any damage while protecting operator identity, for reasoning behind this design check `spec.txt`
+- Design is based off "zero-trust" even malicious peers cannot do any damage while protecting operator identity. for more techincal information check `spec.txt`
 
 - Pitraix is able to handle millions of hosts, the limit is TOR network capacity
 
@@ -26,42 +26,57 @@
 
 - on Windows it uses a modified version of UACME (work in progress)
 
+- *BSD support is work in progress
 
 # Dynamic Behaviour
 - Pitraix automagically chooses different persistence locations on every host as well as names of config file, pitraix name it's self and more are all dynamically generated to confuse anti-viruses
 
 
 # Anonymous and secure
-- Hosts don't know each other, not even their their tor onion address
+- Pitraix is coded in Golang which is memory safe and real fast. it's used by important companies such as: Google, Banks, Discord, etc
 
-- Agents are hosts but have tor onion address of other hosts, agents relay instructions from operative to hosts. for reasoning behind this design check `spec.txt`
+- Pitraix is coded with extra security in mind to both protect the peer and the operator.
 
-- Operatives are camaoflagued as agents to protect against advanced network timing and packets attacks over tor
+- Hosts don't know each other. Not even their TOR onion address
+
+- Agents are Hosts that have been given TOR onion addresses of other Hosts, Agents relay instructions from Operative to Hosts. for more techincal information check `spec.txt`
+
+- Operatives are camaoflagued as agents to protect against advanced network timing and packets attacks over TOR
 
 # Features
-- State-of-art encryption using AES-256 and public key crypto
+- State-of-art encryption using AES-256 and Public-Key cryptography
 
 - Peer-to-Peer over TOR
-
-- Advanced Anti-VM detection
-
-- Does not read or write any registry keys, thus lower detection
-
-- Ability to keylog cross-platform even when run as user and not root
 
 - Dynamic behaviour
 
 - Built-in crypter
 
+- Built-in keylogger that only picks interesting things
+
 - Built-in ransomware that never stores keys on HOST (I am not responsible how you use this)
 
-- Auto disable backup like Volume shadow copy, onedrive and windows backup
+- Auto disable backup like Volume Shadow Copy, OneDrive and Windows Backup
+
+- Auto spreading to USBS, modified version of EternalBlue, and bunch other 1-days (work in progress)
+
+- Ability to hijack crypto addresses in clipboard
 
 - Readiable code easy to modify, not alot of scattered files
 
-- Events are anything interesting that happens on a host computer, currently it's tied only to keylogger
+- Colorful terminal-based interface for operatives
 
-- Logs are mainly used for debugging behaviour and errors
+- ZERO read/write to registry, thus lower detection
+
+- Time-based Anti-Debugging detection
+
+- Advanced VM detection
+
+- Extremely low system and internet requirements
+
+- Ability to capture Events. Events are anything interesting that happens on a host computer, currently it's tied only to keylogger
+
+- Ability to capture Logs. Logs are mainly used for debugging behaviour and errors
 
 Picture of working OPER
 
@@ -89,6 +104,7 @@ Picture of working OPER
 - Compile lyst for platform you want
 - Compile OPER (do NOT `go run OPER.go`! instead compile it THEN run the executable
 - After running OPER for first time, it should automagically generate and embed RSA keys and TOR addresses into lyst executable
+- OPER will automagically set up TOR. Make sure you don't already have a hidden service running on your device.
 
 
 # Help
@@ -96,26 +112,9 @@ Picture of working OPER
 
 
 # Techincal
+- Please make sure you read `spec.txt` for more techincal information
 - If it's little bit slow it's due TOR network, TOR network is expected to be upgraded soon and thus speed should be greatly improved then
-- Please read `spec.txt` for more techincal information
+- TOR binary from Torproject (which Pitraix uses) is signed and thus does not affect detection rate negatively 
 
-# Future
-- This is a old-ish version of Pitraix, more advanced options will be added soon as I work on ironing out bugs
-- Next release will be more bug-fixes, new instructions and modules support 
-
-
-# Terms
-- Operative/OPER means the botmaster
-
-- Agent/AGS means a host that can relay instructions
-
-- Host/HST means a host that does not relay instructions
-
-- Instructions mean commands
-
-- Host means a bot
-
-- Hostring/cell means botnet
-
-
-Have fun
+# Future & Terms definition
+- Please read `spec.txt` for list of terms and their respective meaning alongside tons of useful information for anybody even thinking of editing source code
