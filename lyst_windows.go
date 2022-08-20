@@ -780,7 +780,7 @@ func decFiles(path string, key []byte) {
 			continue
 		}
 		if file.IsDir() {
-			encFiles(path + "\\" + file.Name(), key)
+			decFiles(path + "\\" + file.Name(), key)
 			continue
 		}
 		fname := file.Name()
