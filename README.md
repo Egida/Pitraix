@@ -126,4 +126,4 @@ Picture of working OPER
 [ar]: README.ar.md
 [ru]: README.ru.md
 [gpgfile]: gpg.asc
-[specfile]: pitraix/specfile.txt
+[specfile]: pitraix/spec.txt
