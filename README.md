@@ -120,3 +120,8 @@ Picture of working OPER
 
 # Future & Terms definition
 - Please read `spec.txt` for list of terms and their respective meaning alongside tons of useful information for anybody even thinking of editing source code
+
+[en]: https://github.com/ThrillQuks/Pitraix#readme
+[he]: README.he.md
+[ar]: README.ar.md
+[ru]: README.ru.md
