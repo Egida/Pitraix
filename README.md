@@ -6,7 +6,7 @@
 # Pitraix
 - Modern Cross-Platform HTTP-Based P2P Botnet over TOR that cannot be traced.
 
-- Design is based off "zero-trust" even malicious peers cannot do any damage while protecting operator identity. for more techincal information check `spec.txt`
+- Design is based off "zero-trust" even malicious peers cannot do any damage while protecting operator identity. for more techincal information check [spec.txt][specfile]
 
 - Pitraix is able to handle millions of hosts, the limit is TOR network capacity
 
@@ -41,7 +41,7 @@
 
 - Hosts don't know each other. Not even their TOR onion address
 
-- Agents are Hosts that have been given TOR onion addresses of other Hosts, Agents relay instructions from Operative to Hosts. for more techincal information check `spec.txt`
+- Agents are Hosts that have been given TOR onion addresses of other Hosts, Agents relay instructions from Operative to Hosts. for more techincal information check [spec.txt][specfile]
 
 - Operatives are camaoflagued as agents to protect against advanced network timing and packets attacks over TOR
 
@@ -114,15 +114,16 @@ Picture of working OPER
 
 
 # Techincal
-- Please make sure you read `spec.txt` for more techincal information
+- Please make sure you read [spec.txt][specfile] for more techincal information
 - If it's little bit slow it's due TOR network, TOR network is expected to be upgraded soon and thus speed should be greatly improved then
 - TOR binary from Torproject (which Pitraix uses) is signed and thus does not affect detection rate negatively 
 
 # Future & Terms definition
-- Please read `spec.txt` for list of terms and their respective meaning alongside tons of useful information for anybody even thinking of editing source code
+- Please read [spec.txt][specfile] for list of terms and their respective meaning alongside tons of useful information for anybody even thinking of editing source code
 
 [en]: https://github.com/ThrillQuks/Pitraix#readme
 [he]: README.he.md
 [ar]: README.ar.md
 [ru]: README.ru.md
 [gpgfile]: gpg.asc
+[specfile]: pitraix/specfile.txt
