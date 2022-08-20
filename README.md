@@ -1,4 +1,4 @@
-**[English][en]** - [Hebrew][he] - [Arabic][ar] - [Russian][ru]
+**[English][en]** - [עִברִית][he] - [العربيه][ar] - [русский][ru]
 
 **I am not responsible for any damage you do using this!**
 
