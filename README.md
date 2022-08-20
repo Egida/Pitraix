@@ -86,7 +86,7 @@ Picture of working OPER
 
 
 # Trust
-- For my GPG key please check `gpg.txt`
+- For my GPG key please check [gpg.asc][gpgfile]
 
 - Anyone who claims to be me and don't haven't signed a message with that key is NOT me
 
@@ -125,3 +125,4 @@ Picture of working OPER
 [he]: README.he.md
 [ar]: README.ar.md
 [ru]: README.ru.md
+[gpgfile]: gpg.asc
