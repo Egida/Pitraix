@@ -90,11 +90,11 @@
 # الدعم
 - تم تطوير هذا المشروع بالكامل بواسطتي في وقت فراغي ، إذا كنت ترغب في دعمي لمواصلة التحديث ، فإن أفضل طريقة هي عبر التبرع.
 
-- مونيرو: "8AvS51UKvQ38howM6WPxLQ5yFyDgWd1ggUTwVBGRH7GYHiG9g4BemSe4u9pQdWQP6MPRXNGWQoJVqQPGWU3Cot8c5YgMFkY`
+- Monero: "8AvS51UKvQ38howM6WPxLQ5yFyDgWd1ggUTwVBGRH7GYHiG9g4BemSe4u9pQdWQP6MPRXNGWQoJVqQPGWU3Cot8c5YgMFkY`
 
-- بيتكوين (segwit): `bc1qy7amu3yarnctutyc2gm0zuqwrqcpjh676v0sld`
+- Bitcoin (segwit): `bc1qy7amu3yarnctutyc2gm0zuqwrqcpjh676v0sld`
 
-- بيتكوين (قديم): `1KcfixRTP4P2rFT1r9yHdQ9cCLNJqWCnPd`
+- Bitcoin (legacy): `1KcfixRTP4P2rFT1r9yHdQ9cCLNJqWCnPd`
 
 # إعداده
 - قم بتنزيل أحدث إصدار Go لمنصتك
