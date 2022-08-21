@@ -820,25 +820,25 @@ func main() {
 	go logUpdaterAsync()
 
 
-	// This line will fetch latest version over TOR
-	// var noerror = true
-	// for i := 0; i < 6; i++ {
-	// 	versionCheck, err := getRequest("https://raw.githubusercontent.com/ThrillQuks/Pitraix/main/version.txt", true, -1)
-	// 	if err != nil {
-	// 		noerror = false
-	// 	} else {
-	// 		noerror = true
-	// 		if strings.TrimSpace(string(versionCheck)) != version {
-	// 			fmt.Printf("%s>%s New verison (fetched over TOR) is %savailable%s! Please update as %ssoon%s as you can.\n", redColor, endColor, greenColor, endColor, redColor, endColor)
-	// 		}
-	// 		break
-	// 	}
-	// 	time.Sleep(2 * time.Second)
+	// This will fetch latest version over TOR
+	var noerror = true
+	for i := 0; i < 6; i++ {
+		versionCheck, err := getRequest("https://raw.githubusercontent.com/ThrillQuks/Pitraix/main/version.txt", true, -1)
+		if err != nil {
+			noerror = false
+		} else {
+			noerror = true
+			if strings.TrimSpace(string(versionCheck)) != version {
+				fmt.Printf("%s>%s New verison (fetched over TOR) is %savailable%s! Please update as %ssoon%s as you can.\n", redColor, endColor, greenColor, endColor, redColor, endColor)
+			}
+			break
+		}
+		time.Sleep(2 * time.Second)
 
-	// }
-	// if noerror == false {
-	// 	fmt.Printf("%s>%s There was %serror%s fetching latest version information over %sTOR %s%s\n", redColor, endColor, redColor, endColor, redColor, err.Error(), endColor)
-	// }
+	}
+	if noerror == false {
+		fmt.Printf("%s>%s There was %serror%s fetching latest version information over %sTOR %s%s\n", redColor, endColor, redColor, endColor, redColor, err.Error(), endColor)
+	}
 
 	// log("started", "pitrarix has loaded")
 	
