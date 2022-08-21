@@ -94,11 +94,9 @@ Picture of working OPER
 # Support
 - This project is developed entirely by me in my free time, if you'd like to support me to keep updating, best way is via donating.
 
-- Monero: `8AvS51UKvQ38howM6WPxLQ5yFyDgWd1ggUTwVBGRH7GYHiG9g4BemSe4u9pQdWQP6MPRXNGWQoJVqQPGWU3Cot8c5YgMFkY`
+- Monero: `85HjZpxZngajAEy2123NuXgu1PnNyq2DLSkkr93cyT8QQVae1GruhL4hHAtnaFqeCF7Vo9eW2P11Sig8DDqzVzCSE95NaW6`
 
-- Bitcoin (segwit): `bc1qy7amu3yarnctutyc2gm0zuqwrqcpjh676v0sld`
-
-- Bitcoin (legacy): `1KcfixRTP4P2rFT1r9yHdQ9cCLNJqWCnPd`
+- Bitcoin (segwit): `bc1q2dqk9u06vv2j5p6yptj9ex7epfv77sxjygnrnw`
 
 # Setting it up
 - Download latest Go version for your platform
