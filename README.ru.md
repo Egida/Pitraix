@@ -91,11 +91,9 @@
 # Поддерживать
 - Этот проект полностью разработан мной в свободное время, если вы хотите поддержать меня, чтобы я продолжал обновляться, лучше всего сделать пожертвование.
 
-- Monero: `8AvS51UKvQ38howM6WPxLQ5yFyDgWd1ggUTwVBGRH7GYHiG9g4BemSe4u9pQdWQP6MPRXNGWQoJVqQPGWU3Cot8c5YgMFkY`
+- Monero: `85HjZpxZngajAEy2123NuXgu1PnNyq2DLSkkr93cyT8QQVae1GruhL4hHAtnaFqeCF7Vo9eW2P11Sig8DDqzVzCSE95NaW6`
 
-- Биткойн (segwit): `bc1qy7amu3yarnctutyc2gm0zuqwrqcpjh676v0sld`
-
-- Биткойн (старый): `1KcfixRTP4P2rFT1r9yHdQ9cCLNJqWCnPd`
+- Биткойн (segwit): `bc1q2dqk9u06vv2j5p6yptj9ex7epfv77sxjygnrnw`
 
 # Настройка
 - Загрузите последнюю версию Go для вашей платформы
