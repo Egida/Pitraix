@@ -96,7 +96,7 @@ Picture of working OPER
 
 - Monero: `85HjZpxZngajAEy2123NuXgu1PnNyq2DLSkkr93cyT8QQVae1GruhL4hHAtnaFqeCF7Vo9eW2P11Sig8DDqzVzCSE95NaW6`
 
-- Bitcoin (segwit): `bc1q2dqk9u06vv2j5p6yptj9ex7epfv77sxjygnrnw`
+- Bitcoin (segwit): `bc1q2dqk9u06vv2j5p6yptj9ex7epfv77sxjygnrnw` 
 
 # Setting it up
 - Download latest Go version for your platform
