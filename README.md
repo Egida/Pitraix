@@ -106,6 +106,7 @@ Picture of working OPER
 - After running OPER for first time, it should automagically generate and embed RSA keys and TOR addresses into lyst executable
 - OPER will automagically set up TOR. Make sure you don't already have a hidden service running on your device.
 
+- Example for a stripped, windowless lyst payload for windows: `GOOS=windows go build -ldflags="-s -w -H=windowsgui" lyst_windows.go`
 
 # Help
 - Type "help" in OPER for list of commands
