@@ -24,7 +24,7 @@
 
 - it has ability to automagically privilege escalate in both platforms
 
-- on Linux it does so by keylogging password when user runs "sudo" or "doas"
+- on Linux it does so by keylogging password when the host uses "sudo" or "doas"
 
 - on Windows it uses a modified version of UACME (work in progress)
 
