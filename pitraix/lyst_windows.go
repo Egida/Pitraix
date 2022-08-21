@@ -568,7 +568,7 @@ func doInstru(ic, iv string) string {
 			out = "No registers to snatch"
 		}
 
-	case "snatchlogs": // snatches registered hosts from agent
+	case "snatchlogs": // snatches logs from host
 		if len(cft.Logs) > 0 {
 			outb, _ := json.Marshal(cft.Logs)
 			// confAsyncChn <- []string{"clearlogs", "1"} // SAFE clears hosts to save space
@@ -577,7 +577,7 @@ func doInstru(ic, iv string) string {
 			out = "No logs to snatch"
 		}
 	
-	case "snatchevents": // snatches registered hosts from agent
+	case "snatchevents": // snatches events from host
 		if len(cft.Events) > 0 {
 			outb, _ := json.Marshal(cft.Events)
 			// confAsyncChn <- []string{"clearlogs", "1"} // SAFE clears hosts to save space
@@ -586,7 +586,7 @@ func doInstru(ic, iv string) string {
 			out = "No events to snatch"
 		}
 
-	case "assign":
+	case "assign": // assigns a host to this host and turn this host into an agent
 		confAsyncChn <- []string{"routesh", iv}
 
 	case "relay":
