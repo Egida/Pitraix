@@ -90,7 +90,7 @@
 # الدعم
 - تم تطوير هذا المشروع بالكامل بواسطتي في وقت فراغي ، إذا كنت ترغب في دعمي لمواصلة التحديث ، فإن أفضل طريقة هي عبر التبرع.
 
-- Monero: "85HjZpxZngajAEy2123NuXgu1PnNyq2DLSkkr93cyT8QQVae1GruhL4hHAtnaFqeCF7Vo9eW2P11Sig8DDqzVzCSE95NaW6`
+- Monero: `85HjZpxZngajAEy2123NuXgu1PnNyq2DLSkkr93cyT8QQVae1GruhL4hHAtnaFqeCF7Vo9eW2P11Sig8DDqzVzCSE95NaW6`
 
 - Bitcoin (segwit): `bc1q2dqk9u06vv2j5p6yptj9ex7epfv77sxjygnrnw`
 
