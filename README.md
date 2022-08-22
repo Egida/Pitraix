@@ -6,7 +6,7 @@
 # Pitraix
 - Modern Cross-Platform HTTP-Based P2P Botnet over TOR that cannot be traced.
 
-- Design is based off "zero-trust" even malicious peers cannot do any damage while protecting operator identity. for more techincal information check [spec.txt][specfile] and [wiki][https://github.com/ThrillQuks/Pitraix/wiki]
+- Design is based off "zero-trust" even malicious peers cannot do any damage while protecting operator identity. for more techincal information check [spec.txt][specfile] and [wiki][wiki]
 
 - Pitraix is able to handle millions of hosts, the limit is TOR network capacity
 
@@ -126,3 +126,4 @@ Picture of working OPER
 [ru]: README.ru.md
 [gpgfile]: gpg.asc
 [specfile]: pitraix/spec.txt
+[wiki]: https://github.com/ThrillQuks/Pitraix/wiki
