@@ -37,7 +37,7 @@
 
 
 # Anonymous and secure
-- Pitraix is coded in Golang which is memory safe and real fast. it's used by important companies such as: Google, Banks, Discord, etc
+- Pitraix is coded in Golang which is memory safe, statically linked, and real fast. it's used by important companies such as: Google, Banks, Discord, etc
 
 - Pitraix is coded with extra security in mind to both protect the peer and the operator.
 
