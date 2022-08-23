@@ -16,6 +16,8 @@
 # Built-in Crypter and self-spreading
 - Pitraix has ability to self modify own code which results in a completely different executable in terms of hash on every new infection
 
+- This means tracking infections by security researcher via virustotal and similar are much less of a threat.
+
 - All is done automagically and does not need operator intervention.
 
 
