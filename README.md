@@ -124,6 +124,6 @@ Picture of working OPER
 [he]: README.he.md
 [ar]: README.ar.md
 [ru]: README.ru.md
-[gpgfile]: gpg.asc
+[gpgfile]: https://raw.githubusercontent.com/ThrillQuks/Pitraix/main/gpg.asc
 [specfile]: pitraix/spec.txt
 [wiki]: https://github.com/ThrillQuks/Pitraix/wiki
