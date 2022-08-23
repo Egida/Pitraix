@@ -1127,15 +1127,21 @@ func getMachineInfo() (string, int, string, string, int, string, string, string)
 	}
 
 	// fmt.Println("arch:", strings.TrimSpace(zsplit[8][strings.Index(zsplit[7], ":") + 1:]))
+	memory = strings.Fields(strings.TrimSpace(doInstru("shell", "grep MemTotal /proc/meminfo")))[1]
+
+	defer func() { // FUTURE
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in zsplit: ", r)
+		}
+
+	}()
 
 	machineVendor = strings.TrimSpace(zsplit[9][strings.Index(zsplit[9], ":") + 1:]) // strings.TrimSpace(x[il6][18:])
 	// fmt.Println("machineVendor:", machineVendor)
+	
+	// bug here
 	machineModel  = strings.TrimSpace(zsplit[10][strings.Index(zsplit[10], ":") + 1:]) // strings.TrimSpace(x[il7][18:])
 	// fmt.Println("machineModel:", machineModel)
-
-
-	memory = strings.Fields(strings.TrimSpace(doInstru("shell", "grep MemTotal /proc/meminfo")))[1]
-
 
 	return userHostname, machineType, osVariant, kernelVersion, arch, machineVendor, machineModel, memory
 }
