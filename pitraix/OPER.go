@@ -2605,7 +2605,7 @@ func main() {
 			fmt.Println("Hello Fake", req.Method)
 		}
 	})
-	http.ListenAndServe("127.0.0.1:1337", nil) // make this dynamic later
+	fmt.Println(http.ListenAndServe("127.0.0.1:1337", nil)) // make this dynamic later
 }
 
 
