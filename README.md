@@ -18,7 +18,7 @@
 
 - This means security researchers tracking infections via virustotal and similar are much less of a threat.
 
-- It also means that 99% of anti viruses cannot detect it
+- It also means that anti viruses cannot detect it!
 
 - All is done automagically and does not need operator intervention.
 
