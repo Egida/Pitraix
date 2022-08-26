@@ -56,6 +56,8 @@
 
 - Built-in crypter
 
+- Built-in RDP over TOR
+
 - Built-in keylogger that only picks interesting things
 
 - Built-in ransomware that never stores keys on HOST (I am not responsible how you use this)
