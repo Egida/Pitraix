@@ -116,6 +116,8 @@ Picture of working OPER
 
 - Example for a stripped, windowless lyst payload for windows: `GOOS=windows go build -ldflags="-s -w -H=windowsgui" lyst_windows.go`
 
+For more examples check [wiki][wiki]
+
 # Help
 - Type "help" in OPER for list of commands
 
