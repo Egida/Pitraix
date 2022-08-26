@@ -6,7 +6,7 @@
 # Pitraix
 - Modern Cross-Platform HTTP-Based P2P Botnet over TOR that cannot be traced.
 
-- Design is based off "zero-trust" even malicious peers cannot do any damage while protecting operator identity. for more techincal information check [spec.txt][specfile] and [wiki][wiki]
+- Design is based off "zero-trust" even malicious peers cannot do any damage while protecting operator identity. for more information check  [wiki][wiki]
 
 - Pitraix is able to handle millions of hosts, the limit is TOR network capacity
 
@@ -37,9 +37,7 @@
 
 
 # Anonymous and secure
-- Pitraix is coded in Golang which is memory safe, statically linked, and real fast. it's used by important companies such as: Google, Banks, Cloudflare, Discord, etc
-
-- Pitraix is coded with extra security in mind to both protect the peer and the operator.
+- Pitraix is coded in Golang which is memory safe, statically linked, and real fast. it's used by important companies such as: Google, Banks, Cloudflare, Discord, etc and uses same libraries used by those companies, thus guaranteed safe code
 
 - Hosts don't know each other. Not even their TOR onion address
 
@@ -56,7 +54,7 @@
 
 - Built-in crypter
 
-- Built-in RDP over TOR
+- Built-in RDP over TOR (even works on linux too!)
 
 - Built-in keylogger that only picks interesting things
 
@@ -64,7 +62,11 @@
 
 - Auto disable backup like Volume Shadow Copy, OneDrive and Windows Backup
 
-- Auto spreading to USBS, modified version of EternalBlue, and bunch other 1-days (work in progress)
+- Auto spreading to USBs, modified version of EternalBlue, and bunch other 1-days (work in progress)
+
+- Auto privilege escalate on Windows and Linux!
+
+- Can hide from ALL system monitoring tools on Linux! (uses LD_PRELOAD)
 
 - Ability to hijack crypto addresses in clipboard
 
