@@ -3,7 +3,7 @@ name: bug
 about: Crashes and other bugs
 title: "[BUG]"
 labels: bug
-assignees: ''
+assignees: ThrillQuks
 
 ---
 
@@ -16,7 +16,7 @@ assignees: ''
 **Are you using Release or master?**
 - Fill here
 
-** Did you or the host have TOR previously installed?**
+**Do you or the host have TOR running?**
 - Fill here
 
 **Are you running both OPER and lyst payload on same machine?**
@@ -36,6 +36,3 @@ A clear and concise description of what you expected to happen.
 
 **Screenshots**
 If applicable, add screenshots to help explain your problem.
-
-**Additional context**
-Add any other context about the problem here.
