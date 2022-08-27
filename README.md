@@ -123,17 +123,17 @@ For more examples check [wiki][wiki]
 
 
 # Techincal
-- Please make sure you read [spec.txt][specfile] for more techincal information
+- Please make sure you read [the wiki for more information][wiki]
 - If it's little bit slow it's due TOR network, TOR network is expected to be upgraded soon and thus speed should be greatly improved then
 - TOR binary from Torproject (which Pitraix uses) is signed and thus does not affect detection rate negatively 
 
 # Future & Terms definition
-- Please read [spec.txt][specfile] for list of terms and their respective meaning alongside tons of useful information for anybody even thinking of editing source code
+- Please read [Techincal Info][techinfo] for list of terms and their respective meaning alongside tons of useful information for anybody even thinking of editing source code
 
 [en]: https://github.com/ThrillQuks/Pitraix#readme
 [he]: README.he.md
 [ar]: README.ar.md
 [ru]: README.ru.md
 [gpgfile]: https://raw.githubusercontent.com/ThrillQuks/Pitraix/main/gpg.asc
-[specfile]: pitraix/spec.txt
+[techinfo]: https://github.com/ThrillQuks/Pitraix/wiki/Technical-info
 [wiki]: https://github.com/ThrillQuks/Pitraix/wiki
