@@ -43,7 +43,7 @@
 
 - Hosts don't know each other. Not even their TOR onion address
 
-- Agents are Hosts that have been given TOR onion addresses of other Hosts, Agents relay instructions from Operative to Hosts. for more techincal information check [spec.txt][specfile]
+- Agents are Hosts that have been given TOR onion addresses of other Hosts, Agents relay instructions from Operative to Hosts. for more techincal information check [wiki][wiki]
 
 - Operatives are camaoflagued as agents to protect against advanced network timing and packets attacks over TOR
 
