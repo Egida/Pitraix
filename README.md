@@ -60,7 +60,7 @@
 
 - Built-in keylogger that only picks interesting things
 
-- Built-in ransomware that never stores keys on HOST (I am not responsible how you use this)
+- Built-in ransomware that is incredibly fast and never stores keys on HOST (I am not responsible how you use this)
 
 - Auto disable backup like Volume Shadow Copy, OneDrive and Windows Backup
 
