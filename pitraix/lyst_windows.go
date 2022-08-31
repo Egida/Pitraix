@@ -80,6 +80,8 @@ const (
 
 	// DO NOT CHANGE THIS MANUALLY, RUN OPER
 	agentAddress =".DONT.CHANGE.THIS.RJBLAVLLNXLMNBDDPJPJGKMJJDYDLVQSUIDPZA"
+	
+	lastAgentAddress = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" // 76
 
 
 
