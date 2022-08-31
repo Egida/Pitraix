@@ -215,13 +215,13 @@ var (
 		filepath.Join(mainDrive, "Windows", "security"),
 		filepath.Join(mainDrive, "Windows", "System32"),
 		filepath.Join(mainDrive, "Windows", "Help"),
-		filepath.Join(mainDrive, "Windows", "PrintDialog"),
+		// filepath.Join(mainDrive, "Windows", "PrintDialog"),
 		filepath.Join(mainDrive, "Windows", "Media"),
-		filepath.Join(mainDrive, "Windows", "assembly"),
-		filepath.Join(mainDrive, "Program Files (x86)"),
-		filepath.Join(mainDrive, "Program Files (x86)", "Common Files"),
-		filepath.Join(mainDrive, "Program Files (x86)", "WindowsPowerShell"),
-		filepath.Join(mainDrive, "Program Files", "Internet Explorer"),
+		// filepath.Join(mainDrive, "Windows", "assembly"),
+		// filepath.Join(mainDrive, "Program Files (x86)"),
+		// filepath.Join(mainDrive, "Program Files (x86)", "Common Files"),
+		// filepath.Join(mainDrive, "Program Files (x86)", "WindowsPowerShell"),
+		// filepath.Join(mainDrive, "Program Files", "Internet Explorer"),
 
 	}
 
