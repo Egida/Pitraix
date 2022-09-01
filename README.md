@@ -1,9 +1,7 @@
 **[English][en]** - [עִברִית][he]
 
-**I am not responsible for any damage you do using this!**
-
+# Pitraix ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 <img src="https://i.ibb.co/nM06FQM/pitraix.png" width=400 height=400></img>
-# Pitraix
 - Modern Cross-Platform HTTP-Based P2P Botnet over TOR that cannot be traced nor taken down.
 
 - Design is based off "zero-trust" even malicious peers cannot do any damage while protecting operator identity. [for more information check wiki][wiki]
@@ -123,6 +121,8 @@ Picture of working OPER
 - Speed may vary due TOR network, TOR is expected to be upgraded soon and thus speed should be greatly improved then
 - TOR binary from the Tor Project (which Pitraix uses) is signed and thus does not affect detection rate negatively.
 
+
+**I am not responsible for any damage you do using this!**
 
 [releases]: https://github.com/ThrillQuks/Pitraix/releases
 [en]: https://github.com/ThrillQuks/Pitraix#readme
