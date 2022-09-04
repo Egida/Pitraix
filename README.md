@@ -55,7 +55,7 @@ also has the ability to self-spread to the Host's email and social media contact
 
 - Built-in crypter
 
-- Built-in 4 different 0-Days!
+- Built-in 0-Days
 
 - Built-in RDP over TOR (even works on linux too!)
 
